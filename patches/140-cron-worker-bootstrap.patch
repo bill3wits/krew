@@ -1,0 +1,26 @@
+# why: The restart-safe cron worker runs as 'python -m cron.scheduler'; Python runs cron/__init__.py before scheduler.py imports hermes_bootstrap, so the child died on ModuleNotFoundError before acknowledging ownership. The package __init__ imports the bootstrap first (idempotent).
+# tests: 
+# upstream: superseded by 308072df899 (fix(cron): boot the external worker's PM dependencies); drop this patch when the pin moves past it
+# base: hermes-agent 35272ce28b29 (v0.21.4+canary.20260928T071354Z-19-g35272ce28b)
+
+diff --git a/cron/__init__.py b/cron/__init__.py
+index 9d12ef02d5..a7590ab414 100644
+--- a/cron/__init__.py
++++ b/cron/__init__.py
+@@ -3,6 +3,16 @@ self-scheduled reminders, isolated sessions. The gateway daemon (``hermes gatewa
+ the scheduler every 60 seconds; a file lock prevents duplicate execution across processes.
+ """
+ 
++# The restart-safe external worker is launched as ``sys.executable -m cron.scheduler``: Python imports
++# this package ``__init__`` BEFORE ``cron/scheduler.py`` reaches its own ``import hermes_bootstrap``, and
++# the launcher's interpreter only gains Hermes's dependencies from that bootstrap. Without it the child
++# dies on ``ModuleNotFoundError: No module named 'ruamel'`` before it can acknowledge ownership, and every
++# gateway-managed cron job fails at dispatch. Idempotent in a process that already bootstrapped.
++try:
++    import hermes_bootstrap  # noqa: F401
++except ImportError:  # pragma: no cover - the package is importable without the repo root only in odd embeddings
++    pass
++
+ from cron.jobs import (
+     create_job,
+     get_job,

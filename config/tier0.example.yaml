@@ -1,0 +1,553 @@
+# Parallax Tier 0 — deterministic blocklist/allowlist
+# This file defines the policy rules for the Parallax tiered validation
+# system. Tier 0 runs BEFORE any LLM call and is evaluated in O(1).
+#
+# Location: $KREW_HOME/tier0.yaml (seeded from this example by krew-install)
+# Read by: $KREW_HOME/rails/tier0_gate.py (a pre_tool_call hook, fail_closed)
+#
+# route: (added 2026-07-09, Consulting-division integration) — WHERE a blocked
+# action should go instead of raw execution:
+#   protected — run it via the quarantine (protected_exec / a Consultant with
+#               toolsets=["protected"]); for untrusted/injection-subject execution
+#   prodgate  — a production write: stage -> Vera review -> apply. The owner is not
+#               the reviewer. Testing then review then launch.
+#   assent    — NEEDS HUMAN only: physical world (unplugged camera, a body in
+#               the chair, hardware, root kernel). Not "ask the owner about software".
+#   zoey      — ask Crissa (block --kind needs_input): the single point of contact for
+#               a key, a gate change or a ruling (2026-09-19).
+# Rules without a route default to 'assent' (conservative).
+
+#
+# krew T0 policy: the deterministic pre-exec gate (rails/tier0_gate.py reads $KREW_HOME/tier0.yaml).
+# Lifted rule for rule from the crew it was built on (Parallax T0 lineage, attribution kept in metadata).
+# Every machine value is a {VAR} from `vars:` below; a rule whose var is unset is INACTIVE and
+# `python3 ~/.krew/rails/tier0_gate.py --lint` lists it (never silently).
+#
+# route: where a blocked action goes instead (the agent is told; texts in rails/tier0_gate.py ROUTE_GUIDANCE,
+# override any under `routes:`): protected (quarantine) | prodgate (stage -> Vera -> apply) | assent (NEEDS
+# HUMAN, physical world only) | zoey (ask Crissa: a key, a gate change, a ruling) | worktree | clone | push |
+# window | board | kanban-env | zoey-kit | tmp-checkout | solo-tests | why.  No route = assent.
+#
+# mode: shadow records and never blocks; enforce refuses. The crew runs the POLICY in shadow and its gateways
+# and crew loops in enforce (systemd/user/krew-tier0.conf.example is the drop-in: KREW_T0_MODE=enforce).
+# A rule's own `mode: enforce` refuses whatever the caller carries; `mode: report` tells and never blocks.
+mode: shadow
+
+vars:
+  # The repo your units and hooks run from (the live tree). Rules 'worktree' and 'solo-tests' need it.
+  # LIVE_TREE: ~/projects/<your-rails-repo>
+  # SOLO_TEST: test_<the_one_that_runs_alone>.py
+  HERMES_TREE: ~/.hermes/hermes-agent          # the live Hermes install (dispatcher + gateways)
+  HERMES_CLONE: ~/projects/hermes-agent        # where the crew reads and tests stock Hermes
+  KREW_HOME_DIR: ~/.krew                       # this gate and its policy live here
+  PROJECTS: ~/projects                         # Crissa never writes into the repos
+  DELIVERABLES: ~/Desktop/deliverables         # where Crissa (and the crew) put finished work
+  MODEL_PORTS: [8000]                          # local LLM servers whose control endpoints only the GPU tool calls
+  BRAIN_PORTS: [8000]                          # the live brains among them (127.0.0.1 form)
+  # BRAIN_NAMES: [<your-model-service-name>]   # spoken names of the main LLM ("park <name>")
+  # GPU_TOOL: <the one CLI that allocates the GPU>
+  # DATA_STORES: [/stores/<security>, /stores/<envs>, /stores/<memory>]   # big stores Crissa never writes
+  # PACKS_DIR: <folder the live profile configs are rebuilt from>
+  # RESTORE_SCRIPTS: [scripts/<restore-script>]
+  # ID_STORE: <identity-store folder name>      # face/voice embeddings live under <ID_STORE>/people/
+  # PROMOTION_MARKERS: [<promote-tool>, adapters/latest]
+  # HAND_ONLY_TOOLS: [<tool-that-rewrites-live-data>.py]
+  # DASHBOARD_HOSTS: [<your-dashboard-hostname>]
+  # USER: <owner id>                           # or KREW_USER_ID in the environment
+  # ID_ROOT: /stores/<security>/identity          # or an identity store: people/<id>/person.json with role "user"
+
+trusted_repos: ['{LIVE_TREE}']   # a script tracked and unmodified here is not re-read (rule targets: script); KREW_T0_TRUSTED overrides
+
+blocklist:
+  # Root/system manager (no --user): physical machine. User-scope restart is
+  # launch after review — the keeper already does it; do not park on the owner.
+  # `systemctl --user restart crew` must NOT match. `sudo systemctl restart` must.
+  - pattern: '\bsudo\b[^\n]{0,120}\bsystemctl\b'
+    reason: 'root systemctl (sudo) — NEEDS HUMAN'
+    route: 'assent'
+  - pattern: '\bsystemctl\b(?![^\n]{0,80}--user)[^\n]{0,80}\b(stop|restart|kill|enable|disable|mask|unmask)\b'
+    reason: 'system-scope systemctl (not --user)'
+    route: 'assent'
+
+  # Unit control is not the crew's (the owner 2026-09-30): no worker stops or restarts a unit, user scope
+  # included, directly OR by a script it runs or writes. Reverses the 08-19 allowance for the crew only;
+  # restarts go through the restart window (owed row -> Crissa's ruling -> the executor, after crew's workers).
+  # 10:49 09-30: bash met the approvals refusal on `systemctl --user restart crew`, wrote crew-shot.py
+  # (os.execvp) and ran it. Read-only systemctl (status, is-active, show, cat, list-*) stays free.
+  # ENFORCED 2026-10-02 on the owner's word (report day 42/42 data false alarms, fixed 3fc82288; 0 hits since).
+  # Kill: KREW_T0_UNIT_CONTROL=0.
+  - pattern: '\bsystemctl\b[^\n;&|]{0,120}?\b(?:stop|restart|try-restart|reload-or-restart|try-reload-or-restart|condrestart|force-reload|kill|isolate)\b|\bsystemctl\b[^\n;&|]{0,120}?\b(?:disable|mask)\b[^\n;&|]{0,80}--now\b|\bsystemctl\b[^\n;&|]{0,120}?--now\b[^\n;&|]{0,80}\b(?:disable|mask)\b|\bservice\s+[\w@.-]+\s+(?:stop|restart|force-reload|condrestart)\b|\b(?:Stop|Restart|TryRestart|ReloadOrRestart|ReloadOrTryRestart|Kill)Unit\b'
+    reason: 'unit stop/restart by the crew (restarts go only through the restart window)'
+    route: 'window'
+    scope: 'crew'
+    mode: 'enforce'
+    env_off: 'KREW_T0_UNIT_CONTROL'
+    tools: ['terminal', 'execute_code', 'process']
+    targets: ['command', 'script', 'write']
+
+  # Comparison checkouts live on disk, never in /tmp (the owner 2026-10-01). /tmp is tmpfs: every file a checkout
+  # writes is RAM and counts against the worker scope's 4 GB MemoryMax. 05:17 10-01 run 4795 (t_81ef59f0) put
+  # `git worktree add /tmp/baseline` (3.0 GB of the live tree) and then /tmp/mine into it; the second
+  # checkout hit the cap (shmem 3.97 GB of 4) and the OOM killer took git. REPORT-ONLY, enforce on the owner's word.
+  # Kill: KREW_T0_TMP_CHECKOUT=0.
+  - pattern: '\bgit\b(?:\s+-[Cc]\s+\S+)*\s+worktree\s+add\b[^\n;&|]*?\s[''"]?/tmp/'
+    reason: 'a git worktree checkout into /tmp (tmpfs = RAM, counts against the worker cap)'
+    route: 'tmp-checkout'
+    scope: 'crew'
+    mode: 'report'
+    env_off: 'KREW_T0_TMP_CHECKOUT'
+    tools: ['terminal', 'execute_code', 'process']
+    targets: ['command', 'script', 'write']
+
+  # {SOLO_TEST} runs alone (CLAUDE.md "Never glob the solo test ({SOLO_TEST}) into a run": on 09-17 it started
+  # Crissa's parked gateway in Render). Run 4795 ran `pytest tests/` in the live tree. A bulk run is: the the live tree
+  # tests/ folder handed to pytest, a tests/ glob, or {SOLO_TEST} listed with another test file. REPORT-ONLY.
+  # 2026-10-01 (the owner, before any enforce): pytest must be RUN - in command position (line start, or an
+  # unquoted ; & | ( ), after only env/wrapper/uv run/<x> -m - never a grep, echo, prose or a string that only
+  # contains `pytest tests/` (steward 05:55 grep + replay script). Replay 7 d: 175 -> 165, the 10 dropped all text.
+  # Kill: KREW_T0_KREW_MODE_TESTS=0.
+  # flagged. Only a pytest actually RUN (command position, quote-aware) counts. REPORT. Needs LIVE_TREE + SOLO_TEST.
+  - pattern: '(?m)\A(?=[\s\S]*{LIVE_TREE:tail})[\s\S]*?^(?:(?:[^''"\n\\]|\\.|''[^''\n]*''|"(?:[^"\\\n]|\\.)*")*?[;&|(])?\s*(?:\w+=\S*\s+)*(?:(?:do|then|else|exec|nohup|timeout|nice|env|time|stdbuf)(?:\s+-{1,2}[\w=-]+)*(?:\s+\d+[smh]?)?\s+)*(?:uv\s+run(?:\s+--?[\w-]+(?:[= ](?!pytest\b)[^\s;&|]+)?)*\s+)?(?:\S+(?:\s+-[a-zA-Z]+)*\s+-m\s+)?(?:\S*/)?pytest\b[^\n;&|]*?\s[''\"]?(?:\./)?tests/?[''\"]?(?=\s|$|[;&|)])|^(?:(?:[^''"\n\\]|\\.|''[^''\n]*''|"(?:[^"\\\n]|\\.)*")*?[;&|(])?\s*(?:\w+=\S*\s+)*(?:(?:do|then|else|exec|nohup|timeout|nice|env|time|stdbuf)(?:\s+-{1,2}[\w=-]+)*(?:\s+\d+[smh]?)?\s+)*(?:uv\s+run(?:\s+--?[\w-]+(?:[= ](?!pytest\b)[^\s;&|]+)?)*\s+)?(?:\S+(?:\s+-[a-zA-Z]+)*\s+-m\s+)?(?:\S*/)?pytest\b[^\n;&|]*?\stests/[^\s;&|]*\*|^(?:(?:[^''"\n\\]|\\.|''[^''\n]*''|"(?:[^"\\\n]|\\.)*")*?[;&|(])?\s*(?:\w+=\S*\s+)*(?:(?:do|then|else|exec|nohup|timeout|nice|env|time|stdbuf)(?:\s+-{1,2}[\w=-]+)*(?:\s+\d+[smh]?)?\s+)*(?:uv\s+run(?:\s+--?[\w-]+(?:[= ](?!pytest\b)[^\s;&|]+)?)*\s+)?(?:\S+(?:\s+-[a-zA-Z]+)*\s+-m\s+)?(?:\S*/)?pytest\b(?=[^\n;&|]*\b{SOLO_TEST})(?=[^\n;&|]*\b(?!{SOLO_TEST})test_\w+\.py)'
+    reason: 'a bulk pytest run that includes the test file that must run alone ({SOLO_TEST})'
+    route: 'solo-tests'
+    scope: 'crew'
+    mode: 'report'
+    env_off: 'KREW_T0_SOLO_TESTS'
+    tools: ['terminal', 'execute_code', 'process']
+    targets: ['command', 'script', 'write']
+
+  # Crissa's hands keep to her kit (the owner 2026-10-01). Hands named no toolsets, and hermes then loaded EVERY
+  # toolset: terminal 39 and execute_code 3 calls in a week (all reads). The launcher now names her kit; these are
+  # the belt behind it. ENFORCED 2026-10-02 03:43 on the owner's word (report day: no false alarms).
+  # Kill: KREW_T0_ZOEY_KIT=0.
+  - pattern: '[\s\S]'
+    reason: 'Crissa: no shell and no code runner'
+    route: 'zoey-kit'
+    scope: 'crew'
+    profiles: ['zoey']
+    tools: ['terminal', 'execute_code', 'process', 'process_manage']
+    mode: 'enforce'
+    env_off: 'KREW_T0_ZOEY_KIT'
+  # ENFORCED (the owner 2026-10-01 ~04:20): her own controls. A write here lifts her own limits (the computer-use
+  # ceiling, her kit, her hooks), and the safe root does not cover them: they sit inside her profile. Everything
+  # else in her block list stays report-only until the 10-02 review.
+  - pattern: '[\s\S]'
+    reason: 'Crissa: a write to her own controls (config, computer-use manifest, SOUL, hooks, plugins, scripts, cron)'
+    route: 'zoey-kit'
+    scope: 'crew'
+    profiles: ['zoey']
+    tools: ['write_file', 'patch']
+    write_block_always: ['~/.hermes/profiles/zoey/config.yaml', '~/.hermes/profiles/zoey/cua-manifest.yaml', '~/.hermes/profiles/zoey/SOUL.md', '~/.hermes/profiles/zoey/profile.yaml', '~/.hermes/profiles/zoey/hooks', '~/.hermes/profiles/zoey/plugins', '~/.hermes/profiles/zoey/scripts', '~/.hermes/profiles/zoey/bin', '~/.hermes/profiles/zoey/cron', '~/.hermes/plugins']
+    # ~/.hermes/plugins: her plugins/ entries are symlinks there, and the gate judges the RESOLVED path.
+    mode: 'enforce'
+    env_off: 'KREW_T0_ZOEY_KIT'
+  # A BLOCK LIST, not an allow list (the owner 2026-10-01, second ruling). ENFORCED 2026-10-02 03:43 on his word;
+  # HERMES_WRITE_SAFE_ROOT (the allow list) left her .env in the same step.
+  - pattern: '[\s\S]'
+    reason: 'Crissa: a file write into a blocked path'
+    route: 'zoey-kit'
+    scope: 'crew'
+    profiles: ['zoey']
+    tools: ['write_file', 'patch']
+    write_block: ['/etc', '/usr', '/bin', '/sbin', '/lib', '/lib32', '/lib64', '/libx32', '/boot', '/opt', '/var', '/root', '/srv', '/sys', '/proc', '/dev', '/run', '/snap', '~', '{DATA_STORES}']
+    write_except: ['~/.hermes/profiles/zoey', '{DELIVERABLES}']
+    write_block_always: ['{PROJECTS}', '~/.hermes/hermes-agent', '~/.hermes/installs', '~/.hermes/kanban', '~/.hermes/security', '{KREW_HOME_DIR}', '~/.hermes/profiles/zoey/distribution.yaml', '~/.hermes/profiles/zoey/shell-hooks-allowlist.json', '~/.hermes/profiles/zoey/node', '~/.hermes/profiles/zoey/pairing', '~/.hermes/profiles/zoey/sessions']
+    write_block_names: ['.env', '.env.*', '*.env', 'auth.json', 'auth.lock', '*.pem', '*.key', 'id_rsa*', 'id_ed25519*', 'id_ecdsa*', '.netrc', '.git-credentials', '.pgpass', '.pypirc', '.npmrc', 'credentials', 'credentials.json', '*_oauth.json', 'kanban.db', 'kanban.db-*', 'state.db', 'state.db-*']
+    mode: 'enforce'
+    env_off: 'KREW_T0_ZOEY_KIT'
+
+  # Unit FILE writes (the path is the whole haystack on write_file/patch).
+  - pattern: '\A\s*\S*\.config/systemd/user/\S*\s*\Z'
+    reason: 'user unit file write — prodgate then launch'
+    route: 'prodgate'
+
+  # Production LLM service lifecycle (PARK/STOP the main LLM)
+  - pattern: '\b(PARK|STOP)\b\s+(the\s+)?(LLM|service|production|{BRAIN_NAMES})\b'
+    reason: 'production service lifecycle action'
+    route: 'assent'
+
+  # GPU image allocation — only allowed via CLI tool
+  - pattern: '\b(?:{GPU_TOOL})\b'
+    reason: 'GPU allocation change outside its tool ({GPU_TOOL})'
+    route: 'assent'
+
+  # Kernel parameters
+  - pattern: '\bsysctl\b'
+    reason: 'sysctl kernel parameter change'
+    route: 'assent'
+
+  # Privilege escalation
+  - pattern: '\bsudo\b'
+    reason: 'sudo privilege escalation'
+    route: 'assent'
+  - pattern: '\bmodprobe\b'
+    reason: 'kernel module loading'
+    route: 'assent'
+
+  # Untrusted script execution — quarantine-solvable: run it in the container
+  - pattern: '\bcurl\s+.*\|\s*(sh|bash|zsh)\b'
+    reason: 'untrusted script execution (curl|sh)'
+    route: 'protected'
+  - pattern: '\bwget\s+.*\|\s*(sh|bash|zsh)\b'
+    reason: 'untrusted script execution (wget|bash)'
+    route: 'protected'
+
+  # Package management — host installs need assent; experiments belong in quarantine
+  - pattern: '\bapt\s+install\b'
+    reason: 'apt package installation'
+    route: 'protected'
+  - pattern: '\bpacman\s+-Sy\b'
+    reason: 'pacman package installation'
+    route: 'protected'
+
+  # System boot/authentication
+  - pattern: '\bgrub\b'
+    reason: 'GRUB boot configuration'
+    route: 'assent'
+  - pattern: '\bpasswd\b'
+    reason: 'password/credential change'
+    route: 'assent'
+
+  # Catastrophic file operations
+  - pattern: '\brm\s+-rf\s+/(?!home|tmp|dev|proc|sys)\b'
+    reason: 'catastrophic rm -rf on system path'
+    route: 'assent'
+
+  # GPU power management
+  - pattern: '\bnvidia-smi\b.*\b--pm\s*mode\b'
+    reason: 'NVIDIA power management mode change'
+    route: 'assent'
+
+  # LLM brain control endpoints (added 2026-07-09 after a worker POSTed /sleep to the LIVE 35B
+  # mid-investigation — parked the brain with no flag, janitor killed every :8001-pinned worker).
+  # Sleep/wake belongs ONLY to gpu-image; direct control-endpoint calls are a production outage.
+  - pattern: ':(?:{MODEL_PORTS})/(sleep|wake_up|reset_prefix_cache|collective_rpc)\b'
+    reason: 'direct vLLM control-endpoint call on a production brain'
+    route: 'assent'
+  - pattern: '\b(sleep|wake)[_ ]?(up)?\b.*\b(vllm|the brain|:8000|{BRAIN_NAMES})\b'
+    reason: 'LLM sleep/wake manipulation (only the GPU tool may park/restore)'
+    route: 'assent'
+
+  # --- additions 2026-07-31: ports, secrets, Crissa display CDP ---
+  # YAML single-quoted: one backslash before metachar (museum style). Double \\ never matches.
+  - pattern: '127\.0\.0\.1:(?:{BRAIN_PORTS})/(sleep|wake_up|reset_prefix_cache|collective_rpc)\b'
+    reason: 'vLLM control endpoint on a live brain (the ports in vars.BRAIN_PORTS)'
+    route: 'assent'
+  # Secret FILES: writes only. `source …/.env` for a kanban list is a read.
+  - pattern: '\A\s*\S*\.hermes/(profiles/[^/]+/)?\.env\s*\Z'
+    reason: 'per-profile secret file write (API_SERVER_KEY lives here)'
+    route: 'assent'
+  - pattern: '(?:>|>>|\btee\b|\bsed\s+-i\b)[^\n]{0,120}\.hermes/(profiles/[^/]+/)?\.env\b'
+    reason: 'per-profile secret file write'
+    route: 'assent'
+  - pattern: '\A\s*\S*\.hermes/auth\.json\s*\Z'
+    reason: 'hermes credential store write'
+    route: 'assent'
+  - pattern: '\A\s*\S*\.hermes/profiles/[^/]+/config\.yaml\s*\Z'
+    reason: 'profile capability file write — prodgate (self-escalation risk)'
+    route: 'prodgate'
+  - pattern: '(?:>|>>|\btee\b|\bsed\s+-i\b|\bpatch\b)[^\n]{0,160}\.hermes/profiles/[^/]+/config\.yaml\b'
+    reason: 'profile capability file write — prodgate'
+    route: 'prodgate'
+  - pattern: '(?:INSERT|UPDATE|DELETE|DROP|ALTER|REPLACE|PRAGMA|VACUUM|\brm\b|\bmv\b|\bcp\b|\btruncate\b|>)[^\n]{0,120}kanban\.db|kanban\.db[^\n]{0,120}(?:INSERT|UPDATE|DELETE|DROP|ALTER|REPLACE|PRAGMA|VACUUM)'
+    reason: 'the board — direct DB WRITES bypass dispatch/heartbeat invariants (reads/inspection allowed; narrowed 2026-08-10 before enforce: the bare-mention pattern produced 215 shadow hits, almost all ls/SELECT/paths)'
+    route: 'assent'
+  # The packs are the SOURCE the live config is rebuilt from. Gating
+  # .hermes/profiles/*/config.yaml (above) while leaving hermes-packs/ open left
+  # a laundering path: edit the pack, wait for `the pack restore`, and the
+  # change lands in live having never passed a gate. Added 2026-08-11 with the
+  # restore mechanism. READS ARE FREE — the gate only fires on terminal /
+  # execute_code / write_file / patch, so ordinary inspection is unaffected.
+  # 2026-08-30 (steward, card t_d4b9490c): second alternative was
+  # over-broad — it fired on ANY `hermes-packs/` followed within 200 chars by
+  # a `>`, which caught the `2>` in `2>&1` on the canonical read-only
+  # `prodgate stage <pack-path> 2>&1` command (enforce hit at 05:29:50 on
+  # 2026-08-30, blocked re-stage t_ad7a8830-r2). The first alternative
+  # (write-verb → pack-path) already catches real writes; the second
+  # alternative survives only as a pack-path → {tee, rm, mv, sed -i} form
+  # (no bare redirect, no stderr-suppression form). Adversarial review
+  # (Mode A, 2026-08-30) flagged a re-introduced false-positive class on the
+  # first revision (`\d+>(?!&)` fired on read-only
+  # `head -n 5 <pack> 2> /dev/null`); that alternative was dropped — the
+  # second form keeps only pack-path → {tee, rm, mv, sed -i}, which are
+  # unambiguous write/removal operations.
+  # 2026-10-01 (t_8a84e193, the owner's session): a prodgate WORK copy (~/.hermes/gate/<id>/work/<abs path>) is staging,
+  # not the pack: both pack rules skip a hermes-packs/ that sits right after .../work{LIVE_TREE}/.
+  # 68 enforce hits 09-28..09-30 were that staging path (option a on the card). A file-descriptor redirect
+  # (`2>&1`, `2>/dev/null`, `&>`) is no longer a write verb here: it caught ls/grep reads of the pack.
+  # Needs PACKS_DIR / RESTORE_SCRIPTS (inactive without them).
+  - pattern: '(?:(?<![\d&])>|>>|\btee\b|\brm\b|\bmv\b|\bcp\b|\bsed\s+-i\b|\btruncate\b|\bchown\b|\bchmod\b|\bgit\s+checkout\b)[^\n]{0,200}(?<!work{LIVE_TREE:abs}/){PACKS_DIR:tail}/|(?<!work{LIVE_TREE:abs}/){PACKS_DIR:tail}/[^\n]{0,200}(?:\btee\b|\brm\b|\bmv\b|\bsed\s+-i\b)'
+    reason: 'the config packs are the deployment truth: a pack write reaches every profile on the next restore. Prodgate (Vera), not the owner.'
+    route: 'prodgate'
+  # write_file / patch put ONLY the bare path in the haystack (tier0_gate
+  # ._haystack appends TEXT_FIELDS values, not the JSON keys). So anchor on a
+  # haystack that IS a path and nothing else: `cat /path/to/pack` keeps its verb
+  # on the line and stays allowed, while a write_file whose file_path is a pack
+  # matches. That is what keeps reads free.
+  - pattern: '\A\s*\S*(?<!work{LIVE_TREE:abs}/){PACKS_DIR:tail}/\S*\s*\Z'
+    reason: 'direct file write into the config packs (deployment truth): prodgate'
+    route: 'prodgate'
+  # The restore/sync machinery itself. Editing these is editing the lock.
+  - pattern: '\A\s*\S*(?:{RESTORE_SCRIPTS})\s*\Z|(?:>|>>|\btee\b|\bsed\s+-i\b|\brm\b|\bmv\b|\bchmod\b)[^\n]{0,200}(?:{RESTORE_SCRIPTS})'
+    reason: 'the config restore mechanism — prodgate (changes what every profile gets back)'
+    route: 'prodgate'
+  - pattern: '{ID_STORE:tail}/people/[^/]+/(face|voice)\b'
+    reason: 'security embeddings: the identity store''s own write gate owns this path'
+    route: 'prodgate'
+  - pattern: '(?:{PROMOTION_MARKERS})\b'
+    reason: 'model promotion: never automatable, the morning smoke and the owner only'
+    route: 'assent'
+  # Crissa projector CDP ownership (shadow week). team_display / zoey-display are the licensed path.
+  - pattern: 'remote-debugging-port=9222'
+    reason: 'Crissa''s display browser CDP :9222: use her display tool, not ad-hoc chrome flags'
+    route: 'assent'
+  - pattern: '127\.0\.0\.1:9222/json/(new|close)'
+    reason: 'raw CDP tab control on Crissa''s display browser: use her display tool'
+    route: 'assent'
+
+
+  # --- the crew cannot sign as a ruler (the owner 2026-09-19: "Default could be assigned as the owner") ---
+  # The board gate, kanban-loop, the restart window and liveness count a comment
+  # as a RULING when its author is a ruler: zoey, user, human, dashboard (the
+  # default-profile dashboard = the owner's own channel). Crissa rules through her
+  # kanban tools (no terminal); the owner through that dashboard. No personal
+  # name is written here: {USER} is filled by the gate from KREW_USER_ID, else
+  # the person.json whose role is "user". `scope: crew` = a kanban worker or any
+  # named profile; the owner's `default` CLI is never gated by these. Reads stay
+  # free. Kill: KREW_T0_CREW_RULES=0.
+  # tools; the owner through the dashboard. {USER} is the owner's id (KREW_USER_ID or vars.USER). Reads stay free.
+  - pattern: '--author(?:\s*=\s*|\s+)[''"]?(?:zoey|user|human|dashboard|{USER})\b'
+    reason: 'signing a kanban act as a ruler from the crew — rulings come from Crissa''s tools or the owner''s dashboard, never a crew terminal'
+    route: 'zoey'
+    scope: 'crew'
+  # Only near a kanban call: `HERMES_PROFILE=zoey hermes doctor` is diagnosis (Steward, 4 of
+  # 155,778 replayed worker calls) and a ledger test sets HERMES_PROFILE=<name> on purpose.
+  - pattern: '\bHERMES_PROFILE(?:_NAME)?\s*=\s*[''"]?(?:zoey|user|human|dashboard|{USER}|default)\b[^\n]{0,120}\bkanban\b|\bhermes\s+(?:-p\s*|--profile(?:\s*=\s*|\s+))(?:zoey|default)\b[^\n]{0,80}\bkanban\s+(?:comment|complete|block|unblock|archive|reclaim|assign|attach|create)\b|\benv\s+-u\s+HERMES_PROFILE\b[^\n]{0,120}\bkanban\b'
+    reason: 'acting on the board as Crissa or as default (the owner) from the crew — the author would read as a ruler'
+    route: 'zoey'
+    scope: 'crew'
+  # A kwarg only (`add_comment(conn, id, author="zoey")`): a SQL read (`WHERE author =
+  # 'zoey'`) and a grep for `"author": "zoey"` stay free; a SQL write is the kanban.db
+  # rule's and a post to the dashboard is the :9119 rule's.
+  - pattern: '[(,]\s*author\s*=\s*[''"](?:zoey|user|human|dashboard|{USER})[''"]'
+    reason: 'writing a ruler-signed comment from code'
+    route: 'zoey'
+    scope: 'crew'
+  # Any path on it but its health probes: Steward's sweep curls :9119/ping, /health and
+  # the bare root for a status code, and greps port lists (24 replayed calls, all
+  # health). The root is static HTML; every act (/api/…, /kanban, /sessions) is a path.
+  - pattern: '(?:127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\]|{DASHBOARD_HOSTS}):9119/(?!(?:ping|health)\b)[\w.-]'
+    reason: 'the Hermes dashboard from the crew — it is the owner''s channel and signs every comment "dashboard"; the crew uses its kanban tools'
+    route: 'zoey'
+    scope: 'crew'
+  # Reads too (the write rule above stays). hermes read_file already refuses it.
+  - pattern: '\.hermes/(?:profiles/[^/\s]+/)?auth\.json\b|\$\{?HERMES_HOME\}?/auth\.json\b'
+    reason: 'the hermes credential store from the crew (it holds the dashboard login) — never read it'
+    route: 'zoey'
+    scope: 'crew'
+  # The gate's own files. At 11:29 on 2026-09-19 a bash worker (t_b1170887) rewrote the
+  # live policy and dropped Steward's 08-30 narrowing; nothing stopped it. Writes by
+  # path (write_file / patch) or by a write verb aimed at it; reads stay free, and so
+  # does prodgate's own staging under security/prodgate/.
+  - pattern: '\A\s*\S*(?:\.hermes/security/(?!prodgate/)|{KREW_HOME_DIR:tail}/(?:rails/|tier0\.yaml))\S*\s*\Z|(?:>>?|\btee(?:\s+-a)?)\s*[''"]?\S*(?:\.hermes/security/(?!prodgate/)|{KREW_HOME_DIR:tail}/(?:rails/|tier0\.yaml))|\b(?:cp|mv|rm|sed\s+-i|truncate|chmod|ln|install)\b[^\n;|&]*\s[''"]?\S*(?:\.hermes/security/(?!prodgate/)|{KREW_HOME_DIR:tail}/(?:rails/|tier0\.yaml))|\bopen\([^\n]{0,240}(?:\.hermes/security/(?!prodgate/)|{KREW_HOME_DIR:tail}/(?:rails/|tier0\.yaml))[^\n]{0,160}?,\s*[''"][wa]'
+    reason: 'the T0 gate or its policy from the crew — the gate is changed in the repo and installed by a hand, never by the crew it constrains'
+    route: 'zoey'
+    scope: 'crew'
+  # The vault and the egress broker are the owner's (2026-09-19: "a vaulted api reg process
+  # I think we keep team out of"). `hermes egress` (iron-proxy: the sandbox holds a proxy
+  # token, the proxy swaps in the real key), `hermes secrets` (Bitwarden / 1Password) and
+  # `hermes auth|login|logout` are run by a hand; the proxy's state (CA key, management
+  # token, mappings) is never read by the crew. Status reads stay free.
+  - pattern: '\bhermes\s+(?:-p\s*\S+\s+|--profile(?:\s*=\s*|\s+)\S+\s+)?(?:egress\s+(?!status\b|config\b)\w+|secrets\b|auth\s+(?!status\b|list\b)\w+|login\b|logout\b)|\.hermes/(?:profiles/[^/\s]+/)?proxy/'
+    reason: 'the API vault / egress broker from the crew — keys are registered by the owner through Crissa, never by a worker'
+    route: 'zoey'
+    scope: 'crew'
+  # The mouth harvest tool rewrites EVERY element's mouth sidecar on any invocation
+  # (CLAUDE.md: never in a chain; `--help` included). 12:12 on 2026-09-19 a Vera review
+  # worker ran it in the live repo (21 runs that day) and clobbered 8 sidecars' 2d106
+  # track with Haar boxes. Running it is a hand's; reading it stays free.
+  - pattern: '\bpython[\w.]*\s+(?:-\S+\s+)*\S*(?:{HAND_ONLY_TOOLS})\b|(?:^|[;&|(]\s*|&&\s*)\S*(?:{HAND_ONLY_TOOLS})\b'
+    reason: 'a hand-only tool from the crew (vars.HAND_ONLY_TOOLS): it rewrites live data on any invocation, --help included'
+    route: 'zoey'
+    scope: 'crew'
+
+  # The live tree (2026-09-24). This repo IS the running install: 46 user units, 8 system units
+  # and the hermes hooks exec from it, so moving its branch or stashing its working tree is a
+  # deploy. 09-23 17:53 a bash worker (t_1904a089) ran `git stash push && git checkout -b … main
+  # && git cherry-pick` here and every patrol failed for 7 h. Replayed over 387,467 crew tool
+  # calls: 154 hits, every one a real stash/checkout/reset/rebase/cherry-pick/clean/branch -f|-D/
+  # push in this tree (Vera once ran `branch -f main` and `push origin main`). Free: status, log,
+  # diff, add, commit (by path), stash list|show, branch --show-current/-a/-d, push --dry-run,
+  # worktree, and anything under .worktrees/ or another repo. Known gap: a bare `cd` in one call
+  # and the verb in the next (the hook sees neither the shell's cwd nor the path) — the live/dev
+  # split closes it (the live/dev split plan). ENFORCING since 2026-09-24 02:2x (it was report-only until
+  # it fired on a real crew agent, 02:16:48); it stays `mode: 'enforce'` (NOT drop it: a crew run from a
+  # timer or the CLI carries KREW_T0_MODE=shadow, so a bare rule only notes there). Kill: KREW_T0_GIT_TREE=0.
+  - pattern: '(?:\bcd\s+[''"]?\S*{LIVE_TREE:tail}(?![\w.-]|/\.worktrees\b)(?:(?!\bcd\s)[\s\S]){0,2000}?(?:^|[;&|(\n])\s*(?:\w+=\S*\s+)*git\s+(?:(?-i:-c)\s+\S+\s+)*|(?:^|[;&|(\n])\s*(?:\w+=\S*\s+)*git\s+(?:(?-i:-c)\s+\S+\s+)*(?-i:-C)\s+[''"]?\S*{LIVE_TREE:tail}(?![\w.-]|/\.worktrees\b)[''"]?\s+(?:(?-i:-c)\s+\S+\s+)*)(?:checkout\b|switch\b|stash(?!\s+(?:list|show)\b)\b|reset\b|rebase\b|cherry-pick\b|clean\b|push\b(?!\s+(?:\S+\s+)*--dry-run\b)|branch\s+(?:[^\n;&|]*\s)?(?-i:-f|-D|--force|-M)\b|remote\s+(?:set-url|add|remove|rm|rename)\b|config\s+(?:[^\n;&|]*\s)?(?:--unset\S*\s+)?remote\.)'
+    reason: 'moving the live tree ({LIVE_TREE}) from the crew (checkout/switch/stash/reset/rebase/cherry-pick/clean/branch -f|-D/push, or re-pointing a remote) — this folder is the running install; edits and pathspec commits there are fine, branch work goes in a git worktree'
+    route: 'worktree'
+    scope: 'crew'
+    mode: 'enforce'
+    env_off: 'KREW_T0_GIT_TREE'
+  # The same moves with NO folder named (no cd, no git -C, no pushd). The hook sees neither the
+  # shell's cwd nor a path, and a worker whose shell already sits in this repo sends a bare
+  # `git checkout` — last night's shape split over two calls. So a crew branch move must name
+  # where it happens: `cd <worktree> && git …`. Replayed: 7 of 387,621 calls — 4 real bare moves
+  # (`checkout --detach`, Vera's `checkout -- scripts/voiceonly-home-server.py`), 2 from a prodgate
+  # self-test in a scratch repo (they would name it), 1 fixed (a `|` inside a grep regex). Dumped
+  # JSON args (kanban bodies) are never a shell command and are skipped. Same kill.
+  - pattern: '\A(?!\s*\{")(?:(?!\bcd\s|\bpushd\s|\bgit\s+(?:(?-i:-c)\s+\S+\s+)*(?-i:-C)\s)[\s\S]){0,4000}?(?:^|[;\n]|&&|\|\||\|(?=\s))\s*(?:\w+=\S*\s+)*git\s+(?:(?-i:-c)\s+\S+\s+)*(?:checkout\b|switch\b|stash(?!\s+(?:list|show)\b)\b|reset\b|rebase\b|cherry-pick\b|clean\b|push\b(?!\s+(?:\S+\s+)*--dry-run\b)|branch\s+(?:[^\n;&|]*\s)?(?-i:-f|-D|--force|-M)\b|remote\s+(?:set-url|add|remove|rm|rename)\b|config\s+(?:[^\n;&|]*\s)?(?:--unset\S*\s+)?remote\.)'
+    reason: 'a git branch/tree move from the crew that does not say where it runs — name the folder in the same command (cd <worktree> && git …); in the live tree itself it is refused outright'
+    route: 'worktree'
+    scope: 'crew'
+    mode: 'enforce'
+    env_off: 'KREW_T0_GIT_TREE'
+
+  # The hermes tree is the dispatcher (2026-09-27). 09-26 18:05 a steward worker (t_75b7ff05) ran
+  # the tree script's update verb from a card, which runs hermes's own update: new launcher, new
+  # dependency environment, every config migrated, gateways restarted onto a hermes that refused
+  # them; 18:13 a bash worker (t_ac865f03) hard-reset ~/.hermes/hermes-agent. Four gateways down
+  # 10 h, and the board that would have repaired it had no dispatcher. Steward also got past an
+  # approvals refusal by writing the command into a script, hence the list form in the second rule.
+  # Free: status / verify / update --dry-run, git status|log|diff|show|worktree, apply --check,
+  # gateway status, and the stock checkout ~/projects/hermes-agent.
+  # Kill: KREW_T0_HERMES_TREE=0.
+  - pattern: '(?:\bcd\s+[''"]?\S*{HERMES_TREE:tail}(?![\w.-])(?:(?!\bcd\s)[\s\S]){0,2000}?(?:^|[;&|(\n])\s*(?:\w+=\S*\s+)*git\s+(?:(?-i:-c)\s+\S+\s+)*|(?:^|[;&|(\n])\s*(?:\w+=\S*\s+)*git\s+(?:(?-i:-c)\s+\S+\s+)*(?-i:-C)\s+[''"]?\S*{HERMES_TREE:tail}(?![\w.-])[''"]?\s+(?:(?-i:-c)\s+\S+\s+)*)(?:checkout\b|switch\b|stash(?!\s+(?:list|show)\b)\b|reset\b|rebase\b|cherry-pick\b|clean\b|pull\b|merge\b(?!-)|am\b|commit\b|apply\b(?!\s+(?:\S+\s+)*--check\b)|push\b(?!\s+(?:\S+\s+)*--dry-run\b)|branch\s+(?:[^\n;&|]*\s)?(?-i:-f|-D|--force|-M)\b|update-ref\b)'
+    reason: 'moving or patching the live hermes tree from the crew (~/.hermes/hermes-agent is the dispatcher and every gateway) — a tree change is the owner''s window job, rehearsed in a git worktree'
+    route: 'zoey'
+    scope: 'crew'
+    mode: 'enforce'
+    env_off: 'KREW_T0_HERMES_TREE'
+  # ...and no FILE write into it either. Two hours after the dispatcher opened on 09-27, workers
+  # building "enforce the review gate" had rewritten hermes_cli/kanban_db.py (complete_task),
+  # tools/kanban_tools.py, utils.py, pyproject.toml and uv.lock IN the live tree: unreviewed code
+  # executing for every new worker, in the kernel that records the review. Writes by path
+  # (write_file / patch put only the path in the haystack) or by a write verb aimed at it; reads
+  # stay free (copying OUT of the tree too: cp/mv/ln/install/rsync count only when the tree is the
+  # destination), and so does a worktree (~/hermes-worktrees/...). Same kill.
+  - pattern: '\A\s*[~/.$][^\s()]*{HERMES_TREE:tail}/[^\s()]*\s*\Z|(?:>>?|\btee(?:\s+-a)?)\s*[''"]?\S*{HERMES_TREE:tail}/|\b(?:rm|sed\s+-i|truncate|chmod|patch)\b[^\n;|&]*\s[''"]?\S*{HERMES_TREE:tail}/|\b(?:cp|mv|ln|install|rsync)\b[^\n;|&]*\s[''"]?\S*{HERMES_TREE:tail}/[^\s;|&]*[''"]?\s*(?:\Z|[;|&\n])|\bopen\([^\n]{0,240}{HERMES_TREE:tail}/[^\n]{0,160}?,\s*[''"][wa]'
+    reason: 'writing into the live hermes tree from the crew (~/.hermes/hermes-agent is the dispatcher and every gateway) — a tree change is the owner''s window job; build it in a git worktree and hand the patch to Crissa'
+    route: 'zoey'
+    scope: 'crew'
+    mode: 'enforce'
+    env_off: 'KREW_T0_HERMES_TREE'
+  - pattern: '(?:(?:^|[;&|(\n])\s*(?:\w+=\S*\s+)*(?:\S*/)?hermes(?:\s+(?:-p|--profile)(?:\s+|=)\S+)*\s+(?:update\b|pm\s+repair\b|gateway\s+(?:install|uninstall|migrate|start|stop|restart|run)\b)|hermes-tree\.py[''"]?\s+(?:capture\b|update\b(?!\s+(?:\S+\s+)*--dry-run\b))|[''"]hermes[''"]\s*,\s*[''"](?:update|gateway)[''"])'
+    reason: 'updating hermes or starting, stopping or migrating a gateway from the crew — that is a deploy of the dispatcher itself; it is the owner''s window job'
+    route: 'zoey'
+    scope: 'crew'
+    mode: 'enforce'
+    env_off: 'KREW_T0_HERMES_TREE'
+
+  # The upstream hermes clone stays on main (2026-09-28). ~/projects/hermes-agent is where the crew reads and
+  # tests stock hermes; a worker's `checkout -b kanban/crash-status-class` left it on a feature branch with 31
+  # uncommitted files, and tests run there dispatched live cards with unlanded code. Branch MOVES in that folder
+  # go to a worktree; everything else stays free - stash push/pop (the A/B habit, ~200 uses), `checkout -- <path>`,
+  # commit, merge-base, reads. Replay: 9 of 27,888 crew calls, all 9 real branch moves. Kill: KREW_T0_HERMES_CLONE=0.
+  - pattern: '(?:\bcd\s+[''"]?{HERMES_CLONE}(?![\w.-])[''"]?(?:(?!\bcd\s)[\s\S]){0,2000}?(?:^|[;&(\n]|&&|\|\|?\s)\s*(?:\w+=\S*\s+)*git\s+(?:(?-i:-c)\s+\S+\s+)*|(?:^|[;&(\n]|&&|\|\|?\s)\s*(?:\w+=\S*\s+)*git\s+(?:(?-i:-c)\s+\S+\s+)*(?-i:-C)\s+[''"]?{HERMES_CLONE}(?![\w.-])[''"]?\s+(?:(?-i:-c)\s+\S+\s+)*)(?:checkout\b(?![^\n;&|]*\s--(?:\s|$))|switch\b|reset\s+(?:[^\n;&|]*\s)?--hard\b|rebase\b|cherry-pick\b|clean\b|branch\s+(?:[^\n;&|]*\s)?(?-i:-f|-D|--force|-M)\b)'
+    reason: 'moving the upstream hermes clone off main from the crew (checkout <branch>/-b, switch, reset --hard, rebase, cherry-pick, clean, branch -f|-D) — {HERMES_CLONE} stays on main; branch work goes in a worktree'
+    route: 'clone'
+    scope: 'crew'
+    mode: 'enforce'
+    env_off: 'KREW_T0_HERMES_CLONE'
+  # Nothing leaves this machine until the owner publishes (2026-09-28, "prevent accidental git push"): every repo's
+  # push URL is disabled at git (the live tree since 09-24; hermes clone + live tree, the rail repos,
+  # the render skills repo since 09-28), and the crew may not push from anywhere - a worktree, /tmp, a fork remote. Replay: 9 of
+  # 27,888 crew calls, 7 real pushes (a fork, a test branch, the live tree's main x4 + one retry) and 2 texts (a
+  # heredoc HANDOFF note, T0 preflight probe strings). `--dry-run` stays free. Kill: KREW_T0_GIT_PUSH=0.
+  - pattern: '(?:^|[;&(\n]|&&|\|\|?\s)\s*(?:\w+=\S*\s+)*(?:command\s+)?git\s+(?:(?-i:-C)\s+\S+\s+|(?-i:-c)\s+\S+\s+|--\S+\s+)*push\b(?![^\n;&|]*\s--dry-run\b)|[''"]git[''"]\s*,\s*(?:[''"]-C[''"]\s*,\s*\S+\s*,\s*)?[''"]push[''"]'
+    reason: 'git push from the crew — nothing leaves this machine until the owner publishes'
+    route: 'push'
+    scope: 'crew'
+    mode: 'enforce'
+    env_off: 'KREW_T0_GIT_PUSH'
+
+  # The active board is the owner's (2026-09-27). A crew probe (t_4602219a) ran `hermes kanban boards
+  # create … --switch` from 16:58, so `kanban/current` named a one-card scratch board and every
+  # reader that follows it (board gate, kanban-loop, tripwire, KPIs) worked an empty board for 90 min
+  # while 113 cards sat on the real one. A scratch board is fine; switching to it is not — a probe
+  # names its board per call (`--board <slug>` or HERMES_KANBAN_BOARD=<slug>). Only the board roll unit
+  # (a unit, not the crew) moves `current`; the board gate puts it back from the pinned board name
+  # either way (KREW_BOARD_PIN). Kill: KREW_T0_BOARD_SWITCH=0.
+  - pattern: '\bkanban\s+(?:--board(?:\s+|=)\S+\s+)?boards\s+(?:switch|use)\b|\bkanban\s+(?:--board(?:\s+|=)\S+\s+)?boards\s+(?:create|new)\b(?:[^\n;&|]|\\\n)*\s--switch\b|[''"]boards[''"]\s*,\s*[''"](?:switch|use)[''"]|[''"]boards[''"]\s*,\s*[''"](?:create|new)[''"][^\n]{0,300}[''"]--switch[''"]|(?:>>?|\btee(?:\s+-a)?)\s*[''"]?\S*\.hermes/kanban/current\b|\A\s*[~/.$][^\s()]*\.hermes/kanban/current\s*\Z|\bopen\([^\n]{0,200}\.hermes/kanban/current[^\n]{0,80}?,\s*[''"][wa]'
+    reason: 'switching the active kanban board from the crew — every reader follows kanban/current, so a switch blinds the board gate and kanban-loop; create the scratch board WITHOUT --switch and name it per call (hermes kanban --board <slug> … or HERMES_KANBAN_BOARD=<slug>)'
+    route: 'board'
+    scope: 'crew'
+    mode: 'enforce'
+    env_off: 'KREW_T0_BOARD_SWITCH'
+  # A crew pytest in a hermes tree runs with the worker's own HERMES_KANBAN_DB / _BOARD, which point at
+  # the LIVE board: hermes's test sandbox isolates HERMES_HOME, not those. 09-27 12:51 a bash worker's
+  # `pytest tests/hermes_cli -k kanban` filed fixture cards on the live board (t1 pairs, fake pid 12345,
+  # 18 by 15:27) and renamed the default board "Test". scripts/kanban-env-clean drops HERMES_KANBAN_*.
+  # ENFORCING since 09-27 ~23:15 (the owner: "yes please"): report mode counted, and meanwhile the same runs
+  # acted as a second DISPATCHER on the live board - 135 fake-pid (12345) spawns over 101 cards, 59 of them
+  # real work, crashed and their retries burned. Replayed 3,253 of 8,330 crew pytest calls; the route names
+  # the one-word fix. It reads a hermes-tree TARGET (cd / a hermes venv / UV_PROJECT_ENVIRONMENT / --project),
+  # never a path that only appears in an env value. Only the wrapper counts as clean: `env -u HERMES_KANBAN_DB`
+  # was not enough (23:36-23:41 test_kanban_per_profile_cap purged hermes_cli from sys.modules, dodged hermes's
+  # own write guard and wrote a0-a4/b0-b2 on the live board), so kanban-env-clean now runs the command in its
+  # own HOME. The root fix is hermes's tests/conftest.py scrubbing HERMES_KANBAN_* (a tree change: the
+  # the owner's window). Kill: KREW_T0_KANBAN_ENV_TESTS=0.
+  - pattern: '\A(?!\s*\{")(?![\s\S]*kanban-env-clean)(?=[\s\S]*?(?:(?:\bcd|\bpushd)\s+[''\"]?\S*(?:hermes-agent|hermes-worktrees|/wt-t_)|\S*(?:hermes-agent|hermes-worktrees)\S*/\.?venv/bin/|UV_PROJECT_ENVIRONMENT=\S*hermes-agent|--project[= ]\S*(?:hermes-agent|hermes-worktrees)))[\s\S]*?(?:^|[;&|(\n]|&&)\s*(?:\w+=\S*\s+)*(?:(?:env(?:\s+(?:-u\s+\S+|-\S+|\w+=\S*))*|timeout\s+(?:-\S+\s+)*\S+|nice(?:\s+-n\s*\S+)?|time|stdbuf(?:\s+-\S+)+|systemd-run\s+(?:\S+\s+)*?--\s*|xargs(?:\s+-\S+)*)\s+)*(?:\S*/)?(?:pytest\b|python3?(?:\.\d+)?\s+(?:-\S+\s+)*-m\s+pytest\b|uv\s+run\s+(?:--?\S+\s+)*(?:python3?\s+-m\s+)?pytest\b)'
+    reason: 'running hermes tests from a worker shell that can still reach the live ~/.hermes — the fixtures write cards into the LIVE board and dispatch real ones'
+    route: 'kanban-env'
+    scope: 'crew'
+    mode: 'enforce'
+    env_off: 'KREW_T0_KANBAN_ENV_TESTS'
+
+
+# Why before fix (the owner 2026-10-02): a crew call that reverts, reloads, restarts, re-enables or "repairs"
+# something is read against the records that already hold intent (lib/why_before_fix.py intent_for: git log and
+# status, switch files, restart-owed, the journal, the board, the M&S ledger and env hold, hermes's install facts,
+# the display browser's tab list, the process table; 7-day lookback, no new store) and sorted into a KNOWN cause
+# (a Crissa ruling or an owner change: route zoey, she settles it) or an UNKNOWN one (route why: the worker finds out
+# and writes `why: <target> - <found>` on its card). Checked after every blocklist rule, so no refusal changes.
+# REPORT-ONLY for a week, then the owner decides on arming. Kill: KREW_T0_WHY=0.
+why_before_fix:
+  mode: report
+  # Arm by cause or kind (kind_cause > kind > cause > mode), e.g. the replay's recommendation:
+  #   modes: {known: enforce, display: enforce, unknown: report}
+  # ARMED by cause (the owner 2026-10-02, on the replay): a known cause goes to Crissa, a display call stops for a why,
+  # other unknowns stay report-only (kill and unit-file rows get one more tuning pass first).
+  modes: {known: enforce, display: enforce, unknown: report}
+  # whose display calls are the owner's own ask (her hands show him what he asked for)
+  display_exempt_profiles: [zoey]
+  scope: crew
+  env_off: KREW_T0_WHY
+  lookback_days: 7
+  user_markers: ['the owner']
+  rulers: [zoey, user, dashboard]
+  keep_verdicts: ['park', 'archive', 'drop', 'wait', 'later', 'hands', 'no', 'keep', 'leave', 'hold']   # quoted: a bare no is false in YAML
+  own_tabs: []   # e.g. ['http://127.0.0.1:8099/'] your own display pages
+  display_unit: zoey-display.service
+  display_cdp: 'http://127.0.0.1:9222/json/list'
+  env_update_grep: 'hermes update|hermes-tree update|rebuild'
+  why_comment_ttl_s: 7200
+  # the live trees: a git move anywhere else (a worktree, scratch, the upstream clone) is not live state
+  repos: [~/.hermes/hermes-agent]   # add your live trees; a git move elsewhere is not live state
+  pack_paths: {}   # e.g. {skill: '<packs>/skills/{skill}', profile: '<packs>/distributions/{profile}'}: where a
+                   # profile file's source lives in your repo (its git history is read as intent)
+allowlist: []
+
+metadata:
+  version: '2.0-krew'
+  imported_from: 'Parallax T0 (zoeyos security policy tier0.yaml), attribution kept'
+  note: 'T0 only: the T1 dual-LLM layer is deliberately not ported (tirith + approvals.deny cover the deterministic ground).'
+  last_updated: '2026-09-27'
+  changelog_20261001f: 'solo-tests matches only a pytest actually run (command position, quote-aware); greps and files that merely contain the text no longer flag. Still REPORT.'
+  changelog_20261001e: 'two crew rules, REPORT (the owner 10-01, after run 4795 OOM): tmp-checkout (git worktree add into /tmp, KREW_T0_TMP_CHECKOUT) and solo-tests (bulk pytest including {SOLO_TEST}, KREW_T0_KREW_MODE_TESTS).'
+  changelog_20261001d: 'zoey-kit: her own controls (config.yaml, cua-manifest.yaml, SOUL.md, profile.yaml, hooks, plugins, scripts, bin, cron) are a separate rule in ENFORCE (the owner 10-01 ~04:20); the rest of her block list stays report until the 10-02 review.'
+  changelog_20261001c: 'two false positives fixed (the owner 10-01 board sweep): hermes-tree git rule `merge\b(?!-)` so a READ `git merge-base` is free (t_3d1ee1b2, 2 enforce hits 09-30); the two pack rules skip a prodgate work copy path (t_8a84e193, 68 enforce hits).'
+  changelog_20261001b: 'zoey-kit write rule is a BLOCK LIST (the owner 10-01, second ruling; still REPORT): system folders, his home outside her profile + deliverables, the repos, the live hermes tree + installs, kanban, T0 itself, her own controls (config, cua-manifest, SOUL, hooks, plugins, scripts, cron), credential and board file names, and the DATA_STORES (gate keys write_block / write_except / write_block_always / write_block_names). Her terminal and code_execution toolsets are disabled in her config.'
+  changelog_20261001: 'zoey-kit rules (profile zoey, REPORT for one day then enforce on the owner''s word, route zoey-kit, KREW_T0_ZOEY_KIT): no terminal / execute_code / process, and write_file / patch only inside ~/.hermes/profiles/zoey and ~/Desktop/deliverables (resolved path; gate keys profiles + write_roots).'
+  changelog_20260930: 'unit-control rule (scope crew, REPORT for one day then enforce on the owner''s word, route window, KREW_T0_UNIT_CONTROL): no crew stop/restart of any unit, user scope included, in the command, in a script it runs, or in a script it writes (gate targets script/write, KREW_T0_SCRIPT_BODY). Reverses the 08-19 user-scope restart allowance for the crew; restarts go only through the restart window.'
+  changelog_20260928: 'hermes-clone rule (enforce, route clone, KREW_T0_HERMES_CLONE): no branch move in ~/projects/hermes-agent from the crew, stash/checkout -- path/commit stay free; git-push rule (enforce, route push, KREW_T0_GIT_PUSH): no crew push anywhere, --dry-run free; push URLs disabled at git on six repos.'
+  changelog_20260927c: 'kanban-env test rule (scope: crew, ENFORCE since ~23:15 after fake-pid spawns crashed 59 real cards, route kanban-env, env_off KREW_T0_KANBAN_ENV_TESTS): a crew pytest in a hermes tree should run under scripts/kanban-env-clean, after worker test fixtures filed t1 cards on the live board on 09-27.'
+  changelog_20260927b: 'board-switch rule (scope: crew, enforce, route board, env_off KREW_T0_BOARD_SWITCH): no `kanban boards switch|use`, no `boards create --switch`, no write to kanban/current from the crew, after a probe card switched the house onto scratch boards for 90 min on 09-27.'
+  changelog_20260927: 'hermes-tree rules (scope: crew, enforce, env_off KREW_T0_HERMES_TREE): no git move/patch in ~/.hermes/hermes-agent, no hermes update / pm repair / gateway install|migrate|start|stop|restart|run, no tree-script update|capture from the crew, after two workers updated and reset the live tree on 09-26.'
+  changelog_20260924c: 'both git rules ENFORCE (mode: enforce, route worktree) after live report hits from a real bash agent (02:16:48/49); route worktree says where the work goes instead of parking the card on Crissa.'
+  changelog_20260924b: 'the git rules gain remote set-url/add/remove and git config remote.*, a bare-move rule (no folder named), and the gate learns per-rule mode: enforce (refuses whatever KREW_T0_MODE the caller carries).'
+  changelog_20260924: 'live-tree git rule (scope: crew, mode: report, env_off KREW_T0_GIT_TREE): no checkout/switch/stash/reset/rebase/cherry-pick/clean/branch -f|-D/push in {LIVE_TREE} from the crew; the gate learned per-rule mode: report and env_off.'
+  changelog_20260919: 'crew-scoped ruler rules (scope: crew; {USER} from the identity store, no personal name): no --author / profile / author= as a ruler, no :9119, no reading auth.json. Synced from the live copy first (Steward''s 08-30 pack-rule narrowing had never reached the repo).'
+  changelog_20260819: 'assent = NEEDS HUMAN physical only; user-scope systemctl restart allowed; unit/pack/profile writes prodgate (Vera). False-positive .service grep patterns removed.'
+  source_task: 't_9014d920'
+  changelog_1_1: 'route field per rule (protected|prodgate|assent) — Consulting-division integration'

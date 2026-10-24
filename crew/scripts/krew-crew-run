@@ -1,0 +1,113 @@
+#!/usr/bin/env python3
+"""Run one crew script with krew's settings: `krew-crew-run <script> [args...]`.
+
+Every systemd unit and pre_tool_call hook krew writes goes through this launcher, so one settings file drives them
+all: the `env:` mapping in $KREW_HOME/crew.yaml (default ~/.krew/crew.yaml) is exported first (a value already in
+the environment wins), then the script runs from $KREW_HOME/crew/scripts. One off switch per script: while
+$KREW_HOME/<script stem>.off exists (krew-keeper.off, kanban-board-gate.off, steward-sweep.off, ...) the script is
+not run and the launcher says so, exit 0 (the Control Panel's Off key writes that file; docs/PANEL-CONTRACT.md). It also puts the crew libraries and any
+sibling krew component libraries ($KREW_HOME/*/lib) on PYTHONPATH. A script marked `# krew: hermes-python` runs
+with the Hermes venv (KREW_HERMES_PYTHON, default ~/.hermes/hermes-agent/venv/bin/python). No settings file is normal: every key has a
+default in code. A file that does not parse is reported on stderr and ignored, never silent.
+"""
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+CREW = HERE.parent
+
+
+def krew_home() -> Path:
+    return Path(os.path.expanduser(os.environ.get("KREW_HOME") or "~/.krew"))
+
+
+def _yaml(text: str):
+    try:
+        import yaml
+        return yaml.safe_load(text)
+    except ImportError:
+        pass
+    # a flat fallback: only the `env:` block of `KEY: value` lines (enough for this launcher)
+    out: dict = {}
+    cur = None
+    for raw in text.splitlines():
+        line = raw.split(" #", 1)[0].rstrip()
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        if not line.startswith(" "):
+            cur = line.rstrip(":").strip()
+            out[cur] = {}
+        elif cur and ":" in line:
+            k, v = line.strip().split(":", 1)
+            out[cur][k.strip()] = v.strip().strip('"').strip("'")
+    return out
+
+
+def settings_env(path: Path | None = None) -> dict[str, str]:
+    p = path or Path(os.path.expanduser(os.environ.get("KREW_CREW_CONFIG") or str(krew_home() / "crew.yaml")))
+    try:
+        text = p.read_text(encoding="utf-8")
+    except OSError:
+        return {}
+    try:
+        data = _yaml(text) or {}
+    except Exception as e:  # noqa: BLE001
+        print(f"krew-crew-run: {p} does not parse ({type(e).__name__}: {e}); using defaults", file=sys.stderr)
+        return {}
+    env = data.get("env") if isinstance(data, dict) else None
+    if not isinstance(env, dict):
+        return {}
+    return {str(k): ("" if v is None else str(v)) for k, v in env.items()}
+
+
+def prepare(environ: dict) -> dict:
+    env = dict(environ)
+    for k, v in settings_env().items():
+        env.setdefault(k, os.path.expanduser(v) if v.startswith("~") else v)
+    env.setdefault("KREW_CREW_ROOT", str(CREW))
+    libs = [str(CREW / "lib")] + sorted(str(p) for p in krew_home().glob("*/lib") if p.is_dir() and p != CREW / "lib")
+    if env.get("PYTHONPATH"):
+        libs.append(env["PYTHONPATH"])
+    env["PYTHONPATH"] = os.pathsep.join(libs)
+    return env
+
+
+def main(argv: list[str]) -> int:
+    if not argv or argv[0] in ("-h", "--help"):
+        print(__doc__.strip())
+        return 0 if argv else 2
+    script = Path(argv[0])
+    if not script.is_absolute():
+        script = HERE / script
+    if not script.is_file():
+        print(f"krew-crew-run: no such crew script: {script}", file=sys.stderr)
+        return 2
+    off = krew_home() / (script.stem + ".off")
+    if off.is_file():
+        print(f"krew-crew-run: {script.name} is off by its switch ({off}); remove the file to run it", flush=True)
+        return 0
+    env = prepare(os.environ)
+    first = script.read_text(encoding="utf-8", errors="replace").split("\n", 1)[0]
+    head = script.read_text(encoding="utf-8", errors="replace").split("\n", 3)[:3]
+    if any(h.strip() == "# krew: hermes-python" for h in head):
+        py = os.path.expanduser(env.get("KREW_HERMES_PYTHON") or "~/.hermes/hermes-agent/venv/bin/python")
+        cmd = [py if os.path.exists(py) else sys.executable, str(script), *argv[1:]]
+    elif script.suffix == ".py" or "python" in first:
+        # crew scripts run with the Hermes venv's python when it is there (it has ruamel.yaml and Hermes's deps);
+        # KREW_PYTHON overrides; else this interpreter.
+        py = os.path.expanduser(env.get("KREW_PYTHON") or env.get("KREW_HERMES_PYTHON")
+                                or "~/.hermes/hermes-agent/venv/bin/python")
+        cmd = [py if os.path.exists(py) else sys.executable, str(script), *argv[1:]]
+    elif first.startswith("#!"):
+        cmd = [str(script), *argv[1:]]
+    else:
+        cmd = ["/bin/bash", str(script), *argv[1:]]
+    os.execve(cmd[0], cmd, env)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

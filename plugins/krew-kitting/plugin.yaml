@@ -1,0 +1,12 @@
+name: krew-kitting
+version: 1.0.0
+description: >
+  Allowlist for crew skill indexes. Hermes only has skills.disabled
+  (a denylist); this plugin is the crew's allowlist: allowlist.yaml's
+  per-profile keep-lists plus every krew skill on that profile
+  ($KREW_HOME/crew/skills). Does not touch toolsets or plugin tools.
+author: krew
+requires_env: []
+provides_tools: []
+kind: standalone
+entry: __init__.py

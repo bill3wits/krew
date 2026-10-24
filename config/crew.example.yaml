@@ -1,0 +1,239 @@
+# krew crew machinery settings: copy to $KREW_HOME/crew.yaml (default ~/.krew/crew.yaml; KREW_CREW_CONFIG overrides).
+# Every systemd unit and pre_tool_call hook krew writes runs through crew/scripts/krew-crew-run, which exports the
+# `env:` mapping below first (a value already in the environment wins). Every key is optional: the code default is
+# shown. Lines starting `# ref:` are the values the reference install (the machine krew was lifted from) runs with,
+# so a straight clone of that setup is: uncomment the ref lines and put your own paths, names and ports in.
+
+env:
+  # --- who rules the board ------------------------------------------------------------------------------
+  # KREW_RULERS: zoey,user,human,dashboard          # comment authors whose word is a ruling (dashboard = the web UI)
+  # ref: KREW_RULERS: zoey,user,<your-handle>,human,dashboard
+
+  # --- engines (any OpenAI-compatible endpoint) ----------------------------------------------------------
+  # KANBAN_LOOP_LLM_URL: http://127.0.0.1:8005/v1/chat/completions     # the reframer (no thinking): the crew engine
+  # KANBAN_LOOP_THINK_URL: http://127.0.0.1:8000/v1/chat/completions   # the thinking reframer
+  # KREW_CREW_URL: http://127.0.0.1:8005                               # salad tripwire probes this engine
+  # KREW_CREW_METRICS: http://127.0.0.1:8005/metrics                   # prefix-cache A/B measure + ops-toks
+  # KREW_CREW_MODELS: http://127.0.0.1:8005/v1/models                  # prefix A/B postcheck: is the crew engine serving
+  # KREW_PREFIX_AB_LOG: ~/.hermes/logs/crew-prefix-ab.jsonl           # crew-prefix-ab-measure.py's rows
+  # KREW_OPS_METRICS: http://127.0.0.1:8000/metrics                    # ops-toks: the front-door engine
+  # KREW_OPS_ENGINE_UNIT: ops.service                                  # its user unit (decode speed from its journal)
+  # KREW_CREW_ENGINE_MODELS_URL: http://127.0.0.1:8005/v1/models       # board gate: is the crew engine up
+
+  # --- units the crew machinery watches ------------------------------------------------------------------
+  # KREW_CREW_ENGINE_UNIT: crew.service             # the user unit serving the crew engine (restart owed on salad)
+  # KREW_DISPATCHER_UNIT: hermes-gateway.service    # the gateway that dispatches kanban workers
+  # KREW_FRONT_DOOR_UNIT: hermes-gateway.service    # Crissa's gateway
+  # SWEEP_RAM_UNIT: hermes-gateway.service          # steward sweep skips while this unit is near its memory cap
+  #                                                 #   (unset: hermes-ada-gateway.service, then hermes-gateway.service)
+  # SWEEP_RAM_MAX_PCT: "80"
+
+  # --- the loop ------------------------------------------------------------------------------------------
+  # MAX_CUTS_PER_TICK: "0"          # reframe cuts per tick (unit default 0 = fenced; the code default is 1)
+  # MAX_DECOMPOSE_PER_TICK: "0"
+  # KREW_LOOP_TRIAGE_CLOSES: "1"    # a ruler's `done` closes a triage card
+  # KREW_IMPROVE_DIR: ~/.krew/memory/improvements    # where kpis.json is read
+  # ref: KREW_IMPROVE_DIR: {data}/memory/ms/improvements
+
+  # --- board gate (krew-hold-sweep) ----------------------------------------------------------------------
+  # KREW_LIVENESS_ACT: "1"
+  # KREW_ORPHAN_REAP: "1"
+  # KREW_REVIEW_GATE: "0"
+  # KREW_OWNERLESS_GATE: "0"
+
+  # --- review route hook ---------------------------------------------------------------------------------
+  # KREW_REVIEWER: vera             # who reviews when nobody (or the builder) is named
+  # KREW_REVIEWER_ALT: steward      # who reviews Vera's own builds
+  # KREW_REVIEW_ROUTE: "1"
+
+  # --- tool counts hook ----------------------------------------------------------------------------------
+  # KREW_TOOL_COUNT: "1"
+  # KREW_TOOL_COUNT_DIR: ~/.hermes/tool-counts
+
+  # --- close-clean hook ----------------------------------------------------------------------------------
+  # KREW_CLOSE_CLEAN: report        # off | report | enforce (else ~/.hermes/close-clean.mode; default off)
+  # KREW_CLOSE_CLEAN_CONFIG: ~/.krew/crew/config/close-clean.json
+  # ref: live_repos in that file = ["~/projects/<app-repo>", "~/projects/<presence-repo>", "~/projects/<voice-repo>",
+  #      "~/projects/<stt-repo>"]   (the reference install's four live trees)
+
+  # --- steward sweep -------------------------------------------------------------------------------------
+  # STWARD_HERMES: hermes
+  # KREW_PROMPT_BUDGET_FILE: ""     # a text file with a per-profile prompt budget report, shown on the sweep card
+  # KREW_TOOL_REQS_FILE: ""         # a text file listing open tool/skill edit requests, shown on the sweep card
+
+  # --- the board roll + the steward sweep's roll (opt-in; one standing board is the default) -----------------
+  # KREW_SWEEP_ROLLS_BOARD: "0"     # 1 = the steward sweep rolls the board when it is drained (the reference install: 0)
+  # KREW_BOARD_ROLL_GATE: "1"       # krew-board-roll-ready.py: 0 = the roll's drained-board gate always says ready
+  # KREW_KANBAN_HOME: ~/.hermes/kanban   # where the boards and `current` live
+  # KANBAN_CHATTER_CURSOR: ~/.hermes/kanban-chatter.cursor   # kanban-chatter.py's read position
+  # ZOEY_TOOL_ROLL: ~/.hermes/zoey-tool-roll.jsonl           # the roll kanban-chatter.py appends to
+
+  # --- tmp reapers ---------------------------------------------------------------------------------------
+  # KREW_WORKTREE_REPOS: ~/krew:~/projects/hermes-agent:~/.hermes/hermes-agent   # colon list of repos whose /tmp
+  #                                                 #   worktrees are reported (the reference install's three trees)
+  # KREW_TMP_WORKTREE_REAP: "0"     # 1 = reap, not just report
+
+  # --- team-zoey (plugins/team-zoey; enable krew-board beside it: it owns team_board/team_time/team_config_audit) ---
+  # ZOEYOS_PLAYER: http://127.0.0.1:8100   # the Wall's player, the only way krew reaches Crissa: speak, announce,
+  #                                       #   stop, her card at /v1/screen, her ear at /v1/ear, and presence, camera
+  #                                       #   and registration through /v1/rail/<presence|camera|enroll>/ (Crissa sets
+  #                                       #   where those are: ZOEYOS_PRESENCE_URL, _CAMERA_URL, _ENROLL_URL). Used by
+  #                                       #   team-zoey, the keeper, morning-hello, the render window. No player
+  #                                       #   answering: each says "Crissa not installed"
+  # KREW_PANEL_URL: http://127.0.0.1:8097/  # Crissa's Control Panel, for show_me panel
+  # KREW_CARD_HOLD_S: "600"               # a card krew put up comes down when Crissa's chat ends once it is this old
+  # KREW_PRESENCE_CAMERA_KEY: camera      # the needs sheet's room check: the presence rail's live-camera block
+  # KREW_LOCAL_HOST: 127.0.0.1            # where local services listen
+  # KREW_PORT_9119: "9119"                # move any local service: KREW_PORT_<default>=<port>. Defaults: 8199 composer,
+  #                                       #   9119 Hermes dashboard (Crissa's own services go through ZOEYOS_PLAYER)
+  # KREW_MORNING_LINE_WAIT_S: "120"       # morning-hello: how long one line may stay on the air before it goes on; 0 = no limit
+  # KREW_PERSON: user                   # whose morning brief / brief edits by default
+  # ref: KREW_PERSON: <your-handle>
+  # KREW_USER_NAMES: you,user           # speaker labels that mean the household user (team_speak pauses for them)
+  # ref: KREW_USER_NAMES: <your-handle>,you,user
+  # KREW_PEOPLE_DIR: ~/.krew/people     # <person>/brief.json
+  # ref: KREW_PEOPLE_DIR: ~/projects/<id-repo>/people
+  # KREW_TEAM_LIST_ROOT: ~/.krew/team/list   # Crissa's list (asks + her work)
+  # ref: KREW_TEAM_LIST_ROOT: ~/agents/<old-office>/state/approvals
+  # ref: the reference install maps ada and the announcer to its own cloned voice refs (install-specific voice data, not shipped)
+  # KREW_TEAM_QWEN_VOICES: '{"zoey": "zoe", "lila": "lila", "announcer": "announcer", "ada": "ada"}'
+  # KREW_ASCII_PYTHON: python3          # python with PIL for team_glyph_art photo mode
+  # KREW_TEAM_BOARD_FROM_KREW_BOARD: "1"   # 0 = team-zoey registers its own board tools (without krew-board)
+
+  # --- docs index night + memory (crew/scripts/krew_memory.py, krew-dream.py, nightly-krew-index.py, places) ---
+  # KREW_MEMORY_ROOT: ~/.krew/memory    # day/, rolling/, workspace/TODAY.md, dreams/, archive/ (data: never shipped)
+  # ref: KREW_MEMORY_ROOT: <data-disk>/<memory-dir>
+  # HINDSIGHT_API_URL: http://127.0.0.1:8888    # the long memory the dream night retains into (crew/hindsight/)
+  # HINDSIGHT_BANK: hermes
+  # KREW_DREAM_PEOPLE: the household    # who the night's reflect asks durable facts about
+  # ref: KREW_DREAM_PEOPLE: <the user's and their partner's first names>
+  # KREW_NIGHTLY_INDEX: "0"             # 1 = the night rebuilds the docs index (incremental, CPU-capped)
+  # ref: KREW_NIGHTLY_INDEX: "1"
+  # KREW_INDEX_SOURCES: ""              # comma list; "" = every source in krew.yaml docs.sources
+  # ref: KREW_INDEX_SOURCES: docs,knowledge,skills,rails,render,hermes,hermes-changes,places
+  # KREW_INDEX_CPU_QUOTA: 300%          # the build's CPU cap (the GPU holds the models)
+  # KREW_INDEX_THREADS: "3"
+  # KREW_INDEX_TIMEOUT_S: "3600"
+  # KREW_DOCS_INDEX_SCRIPT: ~/.hermes/plugins/krew-docs/docs_index.py   # krew-docs' index CLI (build/query/read)
+  # KREW_DOCS_INDEX_PYTHON: ~/.krew/embedder-venv/bin/python             # the venv with fastembed (meaning search)
+  # KREW_PLACES: "1"                    # 0 = places map + watch off
+  # KREW_ZOEY_DOCS: "1"                 # 0 = Crissa's docs lookup answers that it is off
+
+  # --- crew loops + profile kit (the nightly improvement chain, architect notes, Daily, keeper, kit) ------------
+  # KREW_DOCS_DIR: ~/.krew/docs           # living docs the loops write: TEAM-RESEARCH-SOURCES.json, STEWARD-MS-REPORT.md
+  # ref: KREW_DOCS_DIR: ~/projects/<app-repo>/docs
+  # KREW_DELIVERABLES: ~/Desktop/krew-deliverables   # the inbox every report lands in
+  # KREW_PACKS_ROOT: ~/.krew/packs        # a packs checkout (distributions/<profile>/config.yaml, skills, plugins)
+  # ref: KREW_PACKS_ROOT: ~/projects/<app-repo>/hermes-packs
+  # KREW_METRICS_ROOT: ~/.krew/metrics
+  # KREW_IMPROVE_DIR: ~/.krew/memory/improvements    # kpis.json + decisions.json the daily and outcomes read
+  # KREW_ARCHITECT_UA: krew-architect-collect/1 (+local)   # user agent for the collect fetches
+  # KREW_ARCHITECT_GH_TOKEN: ""          # optional read-only GitHub token (put it in ~/.krew/architect-gh.env, not here)
+  # SEARXNG_URL: http://127.0.0.1:8080    # search for the collect bundle
+  # TEAM_SOURCES_V2: "1"                  # set by the research units: youtube entries carry their description
+  # KREW_CRON_MODEL: ""                   # model for the crew cron jobs krew-crew-install --crons creates ("" = profile default)
+  # ref: KREW_CRON_MODEL: crew
+  # KREW_CRON_PROVIDER: ""
+  # ref: KREW_CRON_PROVIDER: custom
+  # KREW_SETTINGS_SNAPSHOT: ~/.krew/settings-snapshot   # hermes-settings-check.sh --snapshot baseline: tier0.yaml, ada-SOUL.md, capability snapshot
+  # ref: KREW_SETTINGS_SNAPSHOT: ~/projects/<app-repo>/config/hermes
+  # KREW_GPU_MODE_FILE: ~/.hermes/krew-gpu-mode   # one word (standard/render/big/off...): the loops skip a run the GPU cannot take
+  # --- keeper (opt-in unit; reads Crissa's ear, presence and camera through ZOEYOS_PLAYER, observe only:
+  #     Crissa's launcher restarts its own lanes and shows them on its Control Panel) ---
+  # KEEPER_CHECK_SEC: "60"
+  # KEEPER_RESTARTS_PER_DAY: "3"
+  # KEEPER_START_GRACE_SEC: "600"
+  # KEEPER_ANNOUNCE_START: "8"            # spoken notices only between these local hours
+  # KEEPER_ANNOUNCE_END: "22"
+  # KEEPER_GATEWAY_WAKE_UNITS: hermes-gateway.service   # the one host gateway (the per-profile units are retired); unset = the services rows with wake_at_boot
+  # KREW_TTS_PROVIDER: ""              # Gate-D: the tts provider every Hermes profile with a tts block must name; "" = not checked
+  # KREW_VOICE_WARM_URL: http://127.0.0.1:7789/warm   # the voice server's silent warm ping (lane `voice`, unit voice.service)
+  # --- the optional patrols (opt-in units, off by default: krew-crew-install --enable tool-watch,wall-tab-probe) ---
+  # KREW_TOOL_WATCH: "1"                 # 0 = the tool-call watch does nothing (crew/scripts/krew-tool-watch.py)
+  # KREW_TOOL_WATCH_PROFILE: ""          # whose session store ("" = hands.profile in krew.yaml, zoey)
+  # KREW_TOOL_WATCH_CARDS: "0"           # 1 = a jump files a card on her list (else logged as would_card)
+  # KREW_WALL_TAB_PROBE: "1"             # 0 = the page probe does nothing (crew/scripts/krew-wall-tab-probe.py)
+  # KREW_WALL_TAB_PROBE_CARDS: "0"       # 1 = a dead episode files a card (else would_card)
+  # KREW_WALL_TAB_PROBE_DEAD_TICKS: "3"  # consecutive dead readings before an episode
+  # KREW_GLASS_MODE_FILE: ~/.hermes/krew-glass-mode   # the page probe's CDP verbs (cdp-tick / cdp-probe): wallpaper | brave
+  # KREW_CDP_URL: http://127.0.0.1:9222               # the browser's DevTools endpoint for those verbs
+  # KREW_WALL_TAB_PORT: "8099"                        # the Wall page's port the CDP probe looks for among the tabs
+  # KREW_TOOL_WATCH_DB: ""                # the session store the tool watch reads ("" = the profile's state.db)
+  # KREW_BEAM_MIC_PROBE: "1"             # 0 = the beam-mic probe does nothing (crew/scripts/beam-mic-probe.py; opt-in unit)
+  # KREW_BEAM_MIC_PROBE_CARDS: "1"       # 0 = a missing mic or null beam angle is logged, not carded
+  # KREW_BEAM_MIC_SOURCE: Seeed_Studio_reSpeaker   # the PipeWire source name (substring) of the room's beam mic
+  # --- T0 report-day reviews (krew-t0-*-review units, weekly) ---
+  # KREW_T0_REVIEW_SINCE: ""             # "YYYY-MM-DD HH:MM" a T0 rule went report-only; "" = nothing to review
+  # ref: KREW_T0_REVIEW_SINCE: "2026-09-30 14:10"   (unit control; zoey-kit was "2026-10-01 02:15")
+  # --- the announce drain (crew/units/krew-announce-drain.service: PA lines through the Wall's player) ---
+  # KREW_ANNOUNCE_MUTE: ~/.hermes/krew-announce-mute      # exists = muted
+  # KREW_ANNOUNCE_QUEUE: ~/.hermes/krew-announce-queue.jsonl
+  # KREW_ANNOUNCE_QUEUE_MAX: "20"
+  # KREW_ANNOUNCE_ROUNDUP: "1"            # more than ROUNDUP_OVER lines waiting are said as one roundup
+  # KREW_ANNOUNCE_ROUNDUP_OVER: "3"
+  # KREW_ANNOUNCE_LOG_DIR: ""             # "" = <the inbox>/announcer
+  # KREW_ANNOUNCE_OVERFLOW_PER_HOUR: "5"
+  # ANNOUNCE_PLAIN: "1"                  # rewrite a line in plain words before it is said
+  # ANNOUNCE_PLAIN_URL: http://127.0.0.1:8005/v1/chat/completions   # the crew engine does the rewrite
+  # KREW_TOOL_HOLD: ~/.hermes/krew-tool-hold.json   # a tool run holding the PA quiet
+  # KREW_PA_MAX_CHARS: "220"
+  # KREW_QUIET_FROM_GLOBAL: "1"          # quiet hours from krew.yaml quiet_hours / off_hours
+  # KREW_WINDOW_SCHEDULE: ~/.krew/window-schedule.json   # the Daily's routine registry (its `watch` rows)
+  # --- kit reapply (opt-in unit) ---
+  # --- pin check (crew/scripts/krew-pin-check.py: the Janitor's pin tick, kit reapply, kanban-lean) ----------
+  # Hermes-side pins: skill belts, Crissa's skill preload + SOUL cap, the patch queue on the Hermes tree, T0,
+  # fallbacks, crew SOUL caps. Anything it cannot check is listed as `missing` (a Janitor warn), never skipped.
+  # KREW_HERMES_ROOT: ~/.hermes            # the login user's Hermes home (not a worker's HERMES_HOME)
+  # KREW_KITTING_PLUGIN: ~/.hermes/plugins/krew-kitting/__init__.py
+  # HERMES_TREE: ~/.hermes/hermes-agent
+  # HERMES_PATCH_QUEUE: <krew checkout>/patches   # the queue that must be on the tree
+  # KREW_T0_GATE_SOURCE: <krew checkout>/rails/tier0_gate.py   # compared with ~/.krew/rails/tier0_gate.py
+  # KREW_T0_ENFORCE_GATEWAYS: ada,steward,lila,zoey   # gateways whose drop-ins must carry KREW_T0_MODE=enforce
+  # KREW_T0_MIN_RULES: "20"
+  # KREW_ZOEY_SOUL_CAP: "5200"            # characters; a cap that fires coaches (move procedure out), it never trims
+  # KREW_SOUL_CAP_<PROFILE>: one knob per crew profile; defaults ADA 5200, BASH 8200, STEWARD 10700, LILA 8200,
+  #   VERA 7500, SCOUT 2000, JUDGE 2600 (the reference install's SOUL sizes + ~10 %), e.g. KREW_SOUL_CAP_STEWARD: "12000"
+  #   A cap measures the profile's own text: the souls/TRUNK.md krew-install writes ahead of it is not counted.
+  # KREW_SOULS_TRUNK: ~/krew/souls/TRUNK.md   # the trunk to leave out (default: souls/TRUNK.md in this checkout)
+  # KREW_KIT_REAPPLY: "1"                 # 0 (or ~/.hermes/krew-kit-reapply.off) = off; the reference install has it off
+
+  # --- render lane (render window, submit/collect around ComfyUI, the orders CLI; queue settings: krew.yaml render:) --
+  # KREW_RENDER_WINDOW: "1"               # 0 (or ~/.hermes/render-window.off) = the window holds nothing
+  # KREW_RENDER_DAY_SLOT: "1"            # 0 = no daytime slot: render cards wait for the off-hours
+  # KREW_RENDER_DAY_MIN_MIN: "60"        # the shortest daytime slot worth taking, minutes
+  # KREW_USER_NAMES: you,user             # the names a card uses for the user ("asked by you")
+  # KREW_PRESENCE_URL: ""                 # Crissa presence (is the user at the desk); unset = $ZOEYOS_PLAYER/v1/rail/presence/v1/presence
+  # KREW_MODE_BIN: ""                     # the GPU mode command as words; "" = python3 <the mode script> (crew/lib/krew_mode_cmd.py)
+  # KREW_MODE_PATH: ""                    # a GPU mode script of your own; "" = $KREW_HOME/bin/krew-mode (the install's link), else crew/scripts/krew-mode
+  # ref: KREW_MODE_PATH: ~/projects/<app-repo>/scripts/<gpu-mode-script>
+  # KREW_COMFY_ROOT: ~/ComfyUI            # used when the Wall's render.json names no comfy_dir (crew/lib/krew_comfy.py: one Comfy for both)
+  # ref: KREW_COMFY_ROOT: <data-disk>/comfy
+  # KREW_COMFY_URL: http://127.0.0.1:8188
+  # KREW_COMFY_VENV: ""                   # start-comfyui.sh: ComfyUI's venv ("" = $KREW_COMFY_ROOT/venv)
+  # KREW_COMFY_PORT: "8188"
+  # KREW_COMFY_ARGS: --highvram          # ComfyUI flags (unset = --highvram; "" = none)
+  # KREW_RENDER_MIN_FREE_MIB: ""          # the VRAM a render needs free (gpu_budget.py); unset = the recipe's need
+  # KREW_RENDER_PARK_WALL_SEC: "420"      # wall on the park command; keep it under the worker's terminal timeout
+  # (plugins read their settings in the gateway, not here: look_compare's vision model is KREW_VLM_URL in the
+  #  profile's .env, default the crew engine on 8000; krew-comfy also reads KREW_COMFY_URL and KREW_MODE_BIN there)
+  # KREW_PYTHON: ""                       # set in a krew-render-collect drop-in to a python with OpenCV (scores the ends)
+  # KREW_COMFY_INPUT: ""                  # "" = $KREW_COMFY_ROOT/input  (also KREW_COMFY_OUTPUT, KREW_COMFY_WORKFLOWS)
+  # KREW_COMFY_OUTPUT: ""
+  # KREW_COMFY_WORKFLOWS: ""
+  # KREW_COMFY_CLIENT_ID: krew-wip        # the websocket client id Comfy streams progress to (the Wall's WIP stage)
+  # KREW_COMFY_PREVIEW: auto
+  # KREW_RENDER_MIN_FREE_FRAC: "0.10"
+  # KREW_RENDER_WAIT_SEC: "0"
+  # KREW_RENDER_POLL_N: "72"
+  # KREW_RENDER_POLL_SLEEP: "5"
+  # KREW_RENDER_NOW: ""                   # 1 = this submit is exempt from the render window
+  # KREW_RENDER_PLUGIN: ""                # where render-orders.py finds render_orders.py when crew/lib has none
+  # KREW_RENDER_WINDOW_STATE: ~/.hermes/render-window.json
+  # KREW_PRESENCE_MAX_AGE_S: "30"         # a presence reading older than this is not evidence of an empty room
+  # KREW_TRAIN_HOLD: /tmp/krew-train-hold # the GPU hold file (one `<unit>.service` per line, or `human`)
+  # --- hands measurement (hands-step-cap.py, zoey-claim-check.py, crew-frontier.py) ---
+  # KREW_HANDS_TURNS: turns
+  # KREW_HANDS_CLAIM_TRUTH: ""
+  # KREW_GATEWAY_TOPOLOGY: ""             # host | units ("" = ~/.hermes/krew-topology.env, else units; init writes host)
+  # ref: krew.yaml render.before_run: python3 ~/projects/<app-repo>/scripts/<gpu-mode-script> heavy-enter
+  # ref: krew.yaml render.after_run: python3 ~/projects/<app-repo>/scripts/<gpu-mode-script> heavy-exit

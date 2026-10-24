@@ -1,0 +1,26 @@
+# krew: opt-in (needs a Hindsight install and its Postgres; see crew/hindsight/README.md)
+# The Hindsight memory API the dream night writes to (loopback; the port is HINDSIGHT_API_PORT in hindsight.env).
+# Restart backoff, not a start limit: a crash loop becomes ~10 tries an hour and still heals itself, and an
+# outage of the LLM it uses never leaves it down (HINDSIGHT_API_SKIP_LLM_VERIFICATION=1 lets it boot without one).
+# The upgrade step runs before each start and is a no-op unless its switch file is present (see the script).
+[Unit]
+Description=krew Hindsight memory API (Postgres store + local embeddings, loopback)
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+EnvironmentFile=%h/.krew/hindsight/hindsight.env
+Environment=HINDSIGHT_BASE=%h/.krew/hindsight
+ExecStartPre=-/bin/bash %h/.krew/crew/hindsight/upgrade-0.10.2.sh
+ExecStart=%h/.krew/hindsight/.venv/bin/hindsight-api --no-access-log
+TimeoutStartSec=300
+MemoryHigh=4G
+MemoryMax=6G
+Restart=always
+RestartSec=5
+RestartSteps=8
+RestartMaxDelaySec=600
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,10 @@
+# krew: opt-in (a patrol: off by default; `krew-crew-install --enable wall-tab-probe` turns its timer on;
+# $KREW_HOME/krew-wall-tab-probe.off pauses it)
+[Unit]
+Description=krew wall-tab-probe: the Wall's page probe through its player: report only, never reloads (one card per dead episode with KREW_WALL_TAB_PROBE_CARDS=1)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run krew-wall-tab-probe.py tick
+TimeoutStartSec=90
+Nice=10

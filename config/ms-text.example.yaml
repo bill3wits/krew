@@ -1,0 +1,105 @@
+# M&S operator wording, the reference install's words for every message M&S shows a person (regenerated 2026-10-10
+# from its own text file, placeholders in). Optional: with no text file M&S uses ms_text's built-in neutral wording.
+# Copy to $KREW_HOME/ms-text.yaml and set `text_file: ${KREW_HOME}/ms-text.yaml` in ms.yaml. `{field}` = filled in.
+text:
+  alert.promoted.block_reason: '{name}: {n} rollbacks in a row after promotion - the owner decides'
+  canary.no_target: no live vLLM (mode={mode} want crew :8005 or ops :8000)
+  card.canary_skip.title: 'M&S: the {env} canary has not run for {n} nights ({first}..{last})'
+  card.canary_skip.body: "The vLLM 0.5B canary for `{env}` returned n/a / UNVERIFIED on {n} nights in a row, so every\
+    \ {env} upgrade waited for a window that never came. Free VRAM vs what the canary needed, per night:\n{per_night}\n\
+    \nDecide: resize the canary (config/ms-house.yaml canary.model_05b), free the VRAM, or the lane-swap canary\
+    \ (docs/checkpoints/ms-canary-20260930). Finding: {finding} (findings.json). Evidence: {report}."
+  card.canary_skip.block_reason: '{env} canary skipped {n} nights in a row - the owner decides'
+  card.footer: 'Protocol: files/packs/units → Parallax T0 → Vera prodgate → apply. Venv → host uv + smoke (nightly or Steward M&S land child), not prodgate. A land card is a ROOT card — never `--parent`/`parents` under THIS card: a link makes the NEW card wait on this one, and this one is not done (t_cc6c958c 2026-09-18: 5 runs, 5 blocks, the land card never dispatched). To wait for it: `kanban_link(parent_id=<land>, child_id=<this>)` then a `dependency` block; hermes promotes this card when the land is done. needs-zoey last resort (physical, or stuck after Ada + worker + Vera). the owner does not. Already decided → do not bother him. NEEDS HUMAN is physical only.'
+  card.land.body: 'M&S land child for `{env}`. Assignee steward.
+
+    Parent {parent} already GO. Nightly uv+smoke/canary/rollback. Not prodgate. Not the owner. Completing this card completes the parent.
+
+    ## Actionable packages
+
+    {arrows}
+
+    '
+  card.land.complete: '{env}: M&S land {n} upgraded; smoke/canary ok. Not the owner. Not prodgate.'
+  card.mitigation.criteria: "## ACTIONABLE ONLY — completion criteria\n1. **BEFORE research:** read `docs/DEPS-PINNED-FINDINGS.md` and `{decisions}`. Cite existing holds; do not re-changelog them.\n2. **Deliverable (required):** write ONE markdown file under `{deliverables}/` named `{name}-dep-mitigation-{day}.md` (or update that file).\n3. **Out of kanban — land without the owner:**\n   **GREEN:** nightly 22:33 `uv --no-deps` + smoke/canary. Ledger `pending_apply` on a green target is the deferral queue.\n   **MAJOR (specialist GO):** do NOT complete this parent. File the land card as a ROOT card:\n     `hermes kanban create 'M&S land: {name}' --assignee steward` (NO `--parent`: a `--parent $HERMES_KANBAN_TASK` link makes the land card wait on THIS card, which is not done, so it never dispatches — t_cc6c958c self-deadlocked 2026-09-18). Then `kanban_link(parent_id=<land id>, child_id=$HERMES_KANBAN_TASK)` and end this run with a `dependency` block: hermes promotes this card when the land is done and the next run verifies the scan.\n   Steward's next M&S (22:33) lands the child (uv+smoke). If you forget, nightly schedules the child when this card is done GO. NOT prodgate. NOT the owner.\n   **FILES / packs / units:** prodgate → Vera → apply. Page Crissa if stuck.\n   `hold`/`wontfix` only if it must never land.\n4. **Comments are status only.** Ada: refuse complete if there is no ledger row and no smoke. the owner does not close dep cards.\n5. **Do NOT** decompose into per-package children. Do NOT edit freeze manifests.\n6. NEVER_AUTO (torch/vllm/transformers/…) stay off this path. NEEDS HUMAN is physical world only."
+  card.render_sota.footer: 'T0: prodgate → Vera → apply. Stuck → bash/steward, not Crissa. the owner does not.'
+  card.render_sota.path: '## Path (no owner)
+
+    1. Ada assigns **bash** (or steward). Orderly swap: `ref-mode render turbo` (ops park + Comfy start are inside Render mode). Do not `systemctl stop` brains to make a window.
+
+    2. Smoke, look at the files, restore with `ref-mode normal`: `flux2-turbo` still, `ltx23-flf2v` first+last hub, `ltx25-flf2v` first+last hub. Prompt glance at the **user/camera**, not the lid. **No inventory row.**
+
+    3. Vera prodgate. Checkout the origin tag in `{data}/comfy` (keep `workflows/` + `start-comfyui.sh`). Isolated venv `${MS_ENVS_ROOT}/comfyui` only — never `${MS_ENVS_ROOT}/vllm`. Skip unpinned torch.
+
+    4. If ComfyUI-LTXVideo import fails (RoPE / kornia.pad), bump that plugin as a second step. Leave with `ref-mode normal`.
+
+    5. Crystal: this trail''s render block + smoke paths under `{data}/comfy/output/`. Ledger `applied` or `hold`.'
+  card.restart_owed_tail: report-only units are not restarted by M&S (the wall is the owner's call)
+  card.summary.tail: Apply only after GREEN smoke on a spare env or off-train window. Do not ping USER unless a service is down.
+  error.packaging_hint: Run via ${MS_ENVS_ROOT}/vllm/bin/python or `uv run --with packaging`. Do not use /usr/bin/python3 on this host.
+  error.unlock_kpi_hint: 'Ops tok/s: bash scripts/ops-toks.py --lane ops --record (CP :8086)'
+  health.comfy.render_down: Render occupancy — :8188 down
+  health.comfy.render_up: v{ver} :8188
+  help.accept_review: 'with --step flip: a compare verdict of review is accepted (the owner''s word)'
+  help.apply_pending: land ledger pending_apply majors (venv uv + smoke). Not prodgate, not the owner.
+  help.survey: 're-read live envs, report out-of-band drift vs each manifest, append it to drift.jsonl, refresh manifests (never LAST-GOOD), then exit. No PyPI queries, no apply. Unexplained / against-a-hold drift runs the smoke and files one `ms-drift:<env>:<day>` card to ada (--no-kanban or MS_DRIFT_CARDS=0: none).'
+  help.unlock_kpi: kpi_id to chart on ops-efficiency
+  help.which: with --step serve (which env to start) / stop (old = the Comfy ref-mode started)
+  log.notify: page zoey
+  manifest.engines: '
+
+    ## Engines (live names — not venvs)
+
+
+    | Alias | Bind | How |
+
+    |---|---|---|
+
+    | **ops** | `:8000` | `${MS_ENVS_ROOT}/vllm-030-cu132` 0.30.0 · `ops.service` · served name `ops` |
+
+    | **crew** | `:8005` | `${MS_ENVS_ROOT}/vllm-0271-cu132` 0.27.1 · `crew.service` · served name `crew` · Unsloth Qwen3.8-27B |
+
+    | **cosy** | `:7789` | `${MS_ENVS_ROOT}/chatterbox-turbo` (Chatterbox Turbo, Cosy retired 2026-10-07) · `turbo-voice.service` · probe `/health` |
+
+    | **comfy** | `:8188` | `${MS_ENVS_ROOT}/comfyui` · `{data}/comfy` · parked except Render · probe `/system_stats` |
+
+
+    Product map: the reference build doc. This file is the nightly venv survey.
+
+    '
+  manifest.inventory_heading: '## Venv inventory (rebuilt from ${MS_ENVS_ROOT} this run)'
+  manifest.profiles_note: Scout is a named profile (Steward's researcher). Equal citizen for `hermes update` + restore. **Not** a kanban dispatch assignee.
+  manifest.render_heading: '## Render tools (surveyed this run — no mint)'
+  manifest.stt: '
+
+    ## STT (trimmed 2026-08-10)
+
+
+    | Role | Bind | Unit |
+
+    |------|------|------|
+
+    | **Live-ear ASR slot** | `:8096` | `live-ear` (alias of `audio8-asr`, CPU int8) |
+
+    | **Ears client** | `:8190` | `rail-stt` — `LIVE_EAR_URL` drop-in → :8096 |
+
+    | ~~parakeet-stt~~ | `:8092` | **deleted 2026-09-05** — not live ear |
+
+    | ~~parakeet-onnx A/B~~ | `:8094` | **deleted 2026-09-05** |
+
+
+    Client slot is `live-ear` (`LiveEarEngine` → `LIVE_EAR_URL`). Worker name on `/health` is still `audio8-ark`. Authority: `docs/AUDIO-SPINE.md`. Keep drop-in `rail-stt.service.d/live-ear-url.conf`.
+
+    '
+  manifest.title: '# HOUSE SYSTEM MANIFEST — LIVE (auto-generated)'
+  manifest.unused_note: Installed is not used. A name here stays until the ledger says `wontfix` (keep) or the package is uninstalled. The `hindsight` 0.1.0 squatter sat in the memory server's venv for three months as one of 232 'packages'.
+  md.canary_line: '- Pip-green installs. Not an owner decision, not a waiver of canary/smoke/train-busy/holds. `{canary_env}` canaries the open vLLM (Beast crew :8005, else ops :8000) + 0.5B cold-start when VRAM allows. RED → skip that env / rollback. GPU-shared skip only while `/run/hermes/train-busy` exists.'
+  md.kanban_heading: '## Kanban (crew — summary, not USER)'
+  notify.apply_failed_tail: ). Crew handles. Not asking the owner.
+  notify.osv_tail: . Crew handles via prodgate (Vera). Not asking the owner.
+  os.browser_autoupgrade_line: '- Brave beta still auto-upgrades from a third-party origin and the wall recycle timer that was supposed to pick it up is disabled'
+  render.schema: ref-render-survey/v1
+  render.sota_path: Ada card → Render smoke (flux2-turbo + ltx23-flf2v + ltx25-flf2v) → Vera prodgate → checkout tag. Do not ask the owner. Do not inventory.
+  report.note: 'Manifests under ${KREW_HOME}/ms/manifests/*-LATEST.txt are the current venv truth. GREEN applies in every env. Live canary is the open vLLM (Beast crew :8005, else ops :8000) plus 0.5B cold-start when VRAM allows. USER does not run --force-heavy. Kanban is a summary (env counts + top packages), not one item per dep. Pip-green installs unless canary/smoke/train-busy/hold stops it. Room occupied/dark is room-reference-capture, not this trail. Tool: {tool}.'
+  window.label: nightly-22:33
+  window.note: Greens that did not apply this run + pending_apply majors. Nightly --apply-green drains greens. Specialist pending_apply majors ride the same job (--apply-pending, tests gate). hold/wontfix/NEVER_AUTO never land. Pack-drift/units are prodgate, not this file. the owner does not pick versions.

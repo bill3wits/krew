@@ -1,0 +1,11 @@
+# krew: opt-in (started by krew-kit-reapply.path). After the hermes tree moves, put the kit back (profile YAML,
+# skills, board tools) and bounce gateways whose config changed.
+[Unit]
+Description=krew kit reapply (after the hermes tree moves, put the kit back)
+
+[Service]
+Type=oneshot
+Environment=KREW_KIT_REASON=tree-moved
+Environment=KREW_KIT_SETTLE_S=90
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run krew-kit-reapply.sh
+TimeoutStartSec=900

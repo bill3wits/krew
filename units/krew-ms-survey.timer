@@ -1,0 +1,10 @@
+[Unit]
+Description=M&S survey every 2h
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=2h
+AccuracySec=5min
+
+[Install]
+WantedBy=timers.target

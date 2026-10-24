@@ -1,0 +1,31 @@
+{
+  "_about": "Parity pass 2, lane C (the User 2026-10-10): the keeper's, janitor's and patrols' house files brought across as copies - the janitor's watcher, the door-view check, the audio orphans reaper, the beam-mic probe, the wall-tab probe's own library, the tool watch's library. The janitor's three files (janitor-watch.py, door_view_check.py, audio_orphans.py) and the janitor-watch units are owned by lane B's janitor/* and systemd/user/* globs (2026-10-10: a second package naming them made each file sit in two).",
+  "packages": {
+    "patrols-parity": {
+      "kind": "crew",
+      "about": "crew/lib/beam_mic_probe.py + crew/scripts/beam-mic-probe.py (the room's beam mic, report only, opt-in), crew/lib/wall_tab_probe.py (the Wall page asked through the browser's CDP: krew-wall-tab-probe.py cdp-tick), crew/lib/zoey_tool_watch.py (the front door's tool-call watch, read by crew/scripts/krew-tool-watch.py); the beam-mic units.",
+      "files": [
+        "crew/lib/beam_mic_probe.py",
+        "crew/lib/wall_tab_probe.py",
+        "crew/lib/zoey_tool_watch.py",
+        "crew/scripts/beam-mic-probe.py",
+        "crew/units/krew-beam-mic-probe.service",
+        "crew/units/krew-beam-mic-probe.timer"
+      ],
+      "optional_imports": [
+        "krew_settings",
+        "websockets",
+        "beam_mic_probe"
+      ]
+    }
+  },
+  "imports": {
+    "test_only": [
+      "beam_mic_probe",
+      "cua_doctor",
+      "door_view_check",
+      "wall_tab_probe",
+      "zoey_tool_watch"
+    ]
+  }
+}

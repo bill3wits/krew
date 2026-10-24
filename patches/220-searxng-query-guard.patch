@@ -1,0 +1,562 @@
+# why: SearXNG from one home IP: bursts of operator queries (site:, r/, quotes) drew CAPTCHAs, 429s and 400s until SearXNG ran on one engine. The provider now sends plain keywords, paces machine-wide (1.5 s gap, 8 a minute, 15-minute cache of the same plain query, one flock'd state file under the Hermes home), rests an engine that pushes back (2..60 min) and backs off 5..60 s on SearXNG 429/503. Off: HERMES_SEARXNG_GUARD=0.
+# tests: tests/plugins/web/test_searxng_guard.py tests/plugins/web/test_web_search_provider_plugins.py
+# upstream: candidate
+# base: hermes-agent 35272ce28b29 (v0.21.4+canary.20260928T071354Z-19-g35272ce28b)
+
+diff --git a/plugins/web/searxng/guard.py b/plugins/web/searxng/guard.py
+new file mode 100644
+index 0000000000..66e7de89f9
+--- /dev/null
++++ b/plugins/web/searxng/guard.py
+@@ -0,0 +1,266 @@
++"""SearXNG query hygiene + pacing (krew patch 220, 2026-10-06).
++
++Why: a self-hosted SearXNG runs from one home IP with its own limiter off. Agents fired bursts of
++operator queries (``site:github.com ...``, ``r/LocalLLaMA ...``, quoted phrases), so DuckDuckGo and
++Startpage answered with CAPTCHAs, Brave with 429s, and Wikipedia with 400s (it rejects ``site:``).
++SearXNG then ran on Bing alone. This module, used by the SearXNG provider before every request:
++
++* ``plain_query`` turns search operators into plain keywords (``site:github.com`` -> ``github``,
++  ``r/LocalLLaMA`` -> ``LocalLLaMA reddit``, quotes / ``OR`` / ``-term`` / ``intitle:`` dropped).
++* a machine-wide guard (one small JSON state file under ``$HERMES_HOME/cache``, flock'd, so the
++  gateway, hands children, cron and kanban workers share it):
++  - the same plain query inside ``CACHE_TTL`` is answered from the cache (no upstream call);
++  - outgoing queries are spaced ``MIN_GAP`` apart and capped at ``PER_MIN`` per rolling minute;
++  - an engine that answers CAPTCHA / too many requests / access denied is left out of the next
++    queries (SearXNG's ``engines=`` parameter) for 2, 4, 8 ... up to 60 minutes, so the upstream sees
++    nothing from this IP while it cools down;
++  - SearXNG itself answering 429/503 backs everything off 5, 10, 20 ... 60 s.
++  Over budget or cooling down, the call fails fast with a plain reason instead of hammering.
++
++Off switch: ``HERMES_SEARXNG_GUARD=0`` (old behaviour: the raw query, no pacing).
++"""
++
++from __future__ import annotations
++
++import contextlib
++import json
++import os
++import re
++import time
++from pathlib import Path
++from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
++
++MIN_GAP = float(os.environ.get("HERMES_SEARXNG_MIN_GAP", "1.5"))       # seconds between outgoing queries
++PER_MIN = int(os.environ.get("HERMES_SEARXNG_PER_MIN", "8"))           # outgoing queries per rolling minute
++MAX_WAIT = float(os.environ.get("HERMES_SEARXNG_MAX_WAIT", "4"))       # longest we sleep inside one call
++CACHE_TTL = float(os.environ.get("HERMES_SEARXNG_CACHE_TTL", "900"))   # same plain query -> cached answer
++CACHE_MAX = 64
++MAX_WORDS = 12
++ENGINE_BASE_S = 120.0
++ENGINE_MAX_S = 3600.0
++GLOBAL_BASE_S = 5.0
++GLOBAL_MAX_S = 60.0
++ENGINES_TTL = 3600.0
++
++PUSHBACK = re.compile(r"captcha|too many requests|access denied|forbidden|429|403|rate", re.I)
++
++_OPERATOR_KEYS = ("site", "inurl", "intitle", "allintitle", "allinurl", "intext", "allintext", "filetype",
++                  "ext", "related", "cache", "info", "link", "before", "after", "lang", "loc", "location")
++_TLD_NOISE = {"www", "com", "org", "net", "io", "dev", "co", "uk", "ai", "app", "edu", "gov", "en", "m"}
++
++
++def enabled() -> bool:
++    return os.environ.get("HERMES_SEARXNG_GUARD", "1").strip().lower() not in ("0", "false", "no", "off")
++
++
++def _site_word(value: str) -> str:
++    """``github.com`` -> ``github``; ``en.wikipedia.org/wiki`` -> ``wikipedia``; ``reddit.com/r/x`` -> ``reddit x``."""
++    v = re.sub(r"^https?://", "", value.strip().strip("\"'").lower())
++    host, _, path = v.partition("/")
++    labels = [x for x in host.split(".") if x and x not in _TLD_NOISE and x != "*"]
++    words = labels[-1:] if labels else []
++    m = re.match(r"r/([A-Za-z0-9_]+)", path)
++    if m:
++        words.append(m.group(1))
++    return " ".join(words)
++
++
++def plain_query(query: str) -> str:
++    """Search operators -> plain keywords, deduped, at most ``MAX_WORDS`` words."""
++    q = str(query or "")
++    out: List[str] = []
++
++    def keep(text: str) -> None:
++        for w in re.split(r"\s+", text):
++            w = w.strip("\"'()[]{}*+,;")
++            if w:
++                out.append(w)
++
++    for tok in re.findall(r'-?\w+:"[^"]*"|-?"[^"]*"|\S+', q):
++        neg = tok.startswith("-")
++        body = tok[1:] if neg else tok
++        key, sep, val = body.partition(":")
++        if sep and key.lower() in _OPERATOR_KEYS:
++            if neg:
++                continue                                   # -site:pinterest.com: an exclusion, drop it
++            if key.lower() == "site":
++                keep(_site_word(val))
++            elif key.lower() in ("intitle", "allintitle", "intext", "allintext", "inurl", "allinurl"):
++                keep(val.replace("_", " ").replace("-", " "))
++            continue                                       # filetype:/before:/lang:... carry no keyword
++        if neg and len(body) > 0:
++            continue                                       # -term exclusion
++        m = re.fullmatch(r"/?r/([A-Za-z0-9_]+)/?", body)
++        if m:
++            keep(m.group(1) + " reddit")
++            continue
++        if body.upper() in ("OR", "AND", "NOT", "|", "&&", "||"):
++            continue
++        keep(body)
++    seen, words = set(), []
++    for w in out:
++        k = w.lower()
++        if k in seen:
++            continue
++        seen.add(k)
++        words.append(w)
++    return " ".join(words[:MAX_WORDS])
++
++
++def pushback_engines(data: Dict[str, Any]) -> List[str]:
++    """Engines that pushed back THIS request (not the ones SearXNG already has suspended)."""
++    names = []
++    for row in data.get("unresponsive_engines") or []:
++        try:
++            name, reason = str(row[0]), str(row[1])
++        except (IndexError, TypeError):
++            continue
++        if reason.lower().startswith("suspended"):
++            continue
++        if PUSHBACK.search(reason):
++            names.append(name)
++    return names
++
++
++def suspended_engines(data: Dict[str, Any]) -> List[str]:
++    out = []
++    for row in data.get("unresponsive_engines") or []:
++        try:
++            if str(row[1]).lower().startswith("suspended"):
++                out.append(str(row[0]))
++        except (IndexError, TypeError):
++            continue
++    return out
++
++
++def _state_path() -> Path:
++    """One file for the whole install (the hermes ROOT, not a profile home): every profile shares the IP."""
++    override = os.environ.get("HERMES_SEARXNG_GUARD_STATE", "").strip()
++    if override:
++        return Path(override)
++    try:
++        from hermes_constants import get_default_hermes_root
++        root = Path(get_default_hermes_root())
++    except Exception:  # noqa: BLE001
++        root = Path.home() / ".hermes"
++    return root / "cache" / "searxng-guard.json"
++
++
++@contextlib.contextmanager
++def _locked_state(path: Optional[Path] = None) -> Iterator[Dict[str, Any]]:
++    """Read-modify-write of the shared state under an exclusive flock (best effort off POSIX)."""
++    path = path or _state_path()
++    path.parent.mkdir(parents=True, exist_ok=True)
++    with open(str(path) + ".lock", "a+") as lock:
++        try:
++            import fcntl
++            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
++        except Exception:  # noqa: BLE001
++            pass
++        try:
++            state = json.loads(path.read_text(encoding="utf-8"))
++            if not isinstance(state, dict):
++                state = {}
++        except Exception:  # noqa: BLE001
++            state = {}
++        yield state
++        tmp = path.with_suffix(".tmp")
++        tmp.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
++        os.replace(tmp, path)
++
++
++def _prune(state: Dict[str, Any], now: float) -> None:
++    state["sent"] = [t for t in state.get("sent", []) if now - t < 60.0]
++    cache = {k: v for k, v in (state.get("cache") or {}).items() if now - float(v.get("ts", 0)) < CACHE_TTL}
++    if len(cache) > CACHE_MAX:
++        cache = dict(sorted(cache.items(), key=lambda kv: kv[1].get("ts", 0))[-CACHE_MAX:])
++    state["cache"] = cache
++    state["engines"] = {k: v for k, v in (state.get("engines") or {}).items()
++                        if float(v.get("until", 0)) > now or int(v.get("strikes", 0)) > 0}
++
++
++class Guard:
++    """Plans one SearXNG request and records its outcome. ``clock`` / ``sleep`` are injectable for tests."""
++
++    def __init__(self, path: Optional[Path] = None, clock: Callable[[], float] = time.time,
++                 sleep: Callable[[float], None] = time.sleep):
++        self.path = path
++        self.clock = clock
++        self.sleep = sleep
++
++    def before(self, plain: str, limit: int) -> Tuple[str, Any]:
++        """('cached', results) | ('wait_fail', reason) | ('go', [engines to leave out])."""
++        key = plain.lower()
++        waited = 0.0
++        while True:
++            now = self.clock()
++            with _locked_state(self.path) as st:
++                _prune(st, now)
++                hit = st["cache"].get(key)
++                if hit and hit.get("results"):
++                    return "cached", hit["results"][:limit]
++                cool = float(st.get("cooldown_until", 0)) - now
++                if cool > 0 and cool > MAX_WAIT - waited:
++                    return "wait_fail", (f"SearXNG is backing off after its upstream engines rate-limited this "
++                                         f"IP; try again in about {int(cool) + 1} s, or use what you already have.")
++                if len(st["sent"]) >= PER_MIN:
++                    oldest = min(st["sent"])
++                    return "wait_fail", (f"Web-search budget ({PER_MIN} queries a minute) is used up; "
++                                         f"try again in about {int(60 - (now - oldest)) + 1} s, or work with the "
++                                         f"results you already have.")
++                gap = max(cool, float(st.get("last", 0)) + MIN_GAP - now)
++                if gap <= 0:
++                    st["last"] = now
++                    st["sent"].append(now)
++                    benched = sorted(k for k, v in st["engines"].items() if float(v.get("until", 0)) > now)
++                    return "go", benched
++            if gap > MAX_WAIT - waited:
++                return "wait_fail", f"Web search is pacing itself; try again in about {int(gap) + 1} s."
++            self.sleep(gap)
++            waited += gap
++
++    def after(self, plain: str, limit: int, *, data: Optional[Dict[str, Any]] = None,
++              status: Optional[int] = None, results: Optional[List[Dict[str, Any]]] = None) -> None:
++        now = self.clock()
++        with _locked_state(self.path) as st:
++            _prune(st, now)
++            if status in (429, 503):
++                strikes = int(st.get("global_strikes", 0)) + 1
++                st["global_strikes"] = strikes
++                st["cooldown_until"] = now + min(GLOBAL_MAX_S, GLOBAL_BASE_S * 2 ** (strikes - 1))
++                return
++            if data is None:
++                return
++            st["global_strikes"] = 0
++            answered = {e for r in data.get("results") or [] for e in (r.get("engines") or [])}
++            for name in pushback_engines(data):
++                rec = st["engines"].get(name) or {}
++                strikes = int(rec.get("strikes", 0)) + 1
++                st["engines"][name] = {"strikes": strikes,
++                                       "until": now + min(ENGINE_MAX_S, ENGINE_BASE_S * 2 ** (strikes - 1))}
++            for name in answered:
++                if name in st["engines"]:
++                    st["engines"][name] = {"strikes": 0, "until": 0}
++            if results:
++                st["cache"][plain.lower()] = {"ts": now, "limit": limit, "results": results}
++
++    # --- engine list for ``engines=`` ---------------------------------------------------------------
++    def general_engines(self, fetch: Callable[[], Optional[List[str]]]) -> Optional[List[str]]:
++        now = self.clock()
++        with _locked_state(self.path) as st:
++            rec = st.get("general_engines") or {}
++            if rec.get("names") and now - float(rec.get("ts", 0)) < ENGINES_TTL:
++                return list(rec["names"])
++        names = fetch()
++        if names:
++            with _locked_state(self.path) as st:
++                st["general_engines"] = {"ts": now, "names": names}
++        return names
++
++
++def engines_param(general: Optional[List[str]], benched: List[str]) -> Optional[str]:
++    """SearXNG ``engines=`` value leaving the benched engines out, or None (use SearXNG's defaults)."""
++    if not benched or not general:
++        return None
++    keep = [e for e in general if e not in set(benched)]
++    return ",".join(keep) if keep else None
+diff --git a/plugins/web/searxng/provider.py b/plugins/web/searxng/provider.py
+index 91c8b012af..e9fe4e72bc 100644
+--- a/plugins/web/searxng/provider.py
++++ b/plugins/web/searxng/provider.py
+@@ -2,13 +2,18 @@
+ 
+ Search-only — SearXNG aggregates upstream engines but does not fetch URLs.
+ Env: ``SEARXNG_URL=http://localhost:8080``.
++
++Krew patch 220 (2026-10-06): queries go out as plain keywords, paced machine-wide, with engines
++that push back (CAPTCHA / 429) rested - see ``plugins/web/searxng/guard.py``. Off: ``HERMES_SEARXNG_GUARD=0``.
+ """
+ 
+ from __future__ import annotations
+ 
+ import logging
+-from typing import Any, Dict
++import re
++from typing import Any, Dict, List, Optional
+ 
++from plugins.web.searxng import guard
+ from plugins.web._common import BaseWebSearchProvider, http_get_json, provider_env, search_fail, search_ok, setup_schema, titled_rows
+ 
+ logger = logging.getLogger(__name__)
+@@ -25,18 +30,70 @@ class SearXNGWebSearchProvider(BaseWebSearchProvider):
+         base_url = provider_env("SEARXNG_URL").rstrip("/")
+         if not base_url:
+             return search_fail("SEARXNG_URL is not set")
++        if not guard.enabled():
++            return self._fetch(base_url, {"q": query, "format": "json", "pageno": 1}, query, limit)[0]
++        # Krew patch 220 (2026-10-06): plain keywords, paced, engines that push back benched.
++        plain = guard.plain_query(query)
++        if not plain:
++            return search_fail("The query is empty once search operators (site:, r/, quotes, -term) are removed; "
++                               "search with plain keywords.")
++        if plain != query.strip():
++            logger.info("SearXNG query made plain: %r -> %r", query, plain)
++        g = guard.Guard()
++        try:
++            verdict, value = g.before(plain, limit)
++        except Exception as exc:  # noqa: BLE001 - a broken guard never breaks search
++            logger.warning("SearXNG guard unavailable (%s); searching unpaced", exc)
++            return self._fetch(base_url, {"q": plain, "format": "json", "pageno": 1}, plain, limit)[0]
++        if verdict == "cached":
++            logger.info("SearXNG search '%s': %d results from the local cache", plain, len(value))
++            return search_ok(value)
++        if verdict == "wait_fail":
++            logger.info("SearXNG search '%s' held: %s", plain, value)
++            return search_fail(value)
++        params: Dict[str, Any] = {"q": plain, "format": "json", "pageno": 1}
++        try:
++            engines = guard.engines_param(g.general_engines(lambda: self._general_engines(base_url)) if value else None,
++                                          value)
++        except Exception:  # noqa: BLE001
++            engines = None
++        if engines:
++            params["engines"] = engines
++            logger.info("SearXNG resting engines %s", ",".join(value))
++        result, data, status = self._fetch(base_url, params, plain, limit)
++        try:
++            g.after(plain, limit, data=data, status=status,
++                    results=(result.get("data") or {}).get("web") if result.get("success") else None)
++        except Exception as exc:  # noqa: BLE001
++            logger.debug("SearXNG guard record failed: %s", exc)
++        return result
++
++    def _fetch(self, base_url: str, params: Dict[str, Any], query: str, limit: int):
++        """(search_ok/search_fail dict, raw JSON or None, HTTP status of a failed request or None)."""
+         data, failure = http_get_json(
+-            "SearXNG", f"{base_url}/search", params={"q": query, "format": "json", "pageno": 1},
++            "SearXNG", f"{base_url}/search", params=params,
+             headers={"Accept": "application/json"}, timeout=15, logger=logger, reach_target=f"SearXNG at {base_url}",
+         )
+         if failure is not None:
+-            return failure
++            m = re.search(r"HTTP (\d{3})", str(failure.get("error", "")))
++            return failure, None, int(m.group(1)) if m else None
+         raw_results = data.get("results", [])
+         # SearXNG may return a score field; sort descending and cap to limit.
+         sorted_results = sorted(raw_results, key=lambda r: float(r.get("score", 0)), reverse=True)[:limit]
+         web_results = titled_rows(sorted_results, "content")
+         logger.info("SearXNG search '%s': %d results (from %d raw, limit %d)", query, len(web_results), len(raw_results), limit)
+-        return search_ok(web_results)
++        return search_ok(web_results), data, None
++
++    @staticmethod
++    def _general_engines(base_url: str) -> Optional[List[str]]:
++        """Enabled engines in SearXNG's ``general`` category (its default search), from ``/config``."""
++        data, failure = http_get_json("SearXNG", f"{base_url}/config", params={}, headers={"Accept": "application/json"},
++                                      timeout=5, logger=logger)
++        if failure is not None or not isinstance(data, dict):
++            return None
++        names = [str(e.get("name")) for e in data.get("engines") or []
++                 if e.get("enabled") and "general" in (e.get("categories") or [])]
++        return names or None
+ 
+     def get_setup_schema(self) -> Dict[str, Any]:
+         return setup_schema(
+diff --git a/tests/plugins/web/test_searxng_guard.py b/tests/plugins/web/test_searxng_guard.py
+new file mode 100644
+index 0000000000..0e016f229c
+--- /dev/null
++++ b/tests/plugins/web/test_searxng_guard.py
+@@ -0,0 +1,181 @@
++"""Krew patch 220 (2026-10-06): SearXNG queries go out plain, paced, and push-back engines rest.
++
++Cause it fixes: bursts of operator queries from one home IP - DuckDuckGo/Startpage CAPTCHA, Brave 429,
++Wikipedia 400 on ``site:`` - left SearXNG on Bing alone.
++"""
++from __future__ import annotations
++
++import pytest
++
++from plugins.web.searxng import guard
++from plugins.web.searxng.provider import SearXNGWebSearchProvider
++
++
++@pytest.mark.parametrize("raw, plain", [
++    ("site:github.com hermes agent", "github hermes agent"),
++    ("site:en.wikipedia.org SearXNG", "wikipedia SearXNG"),
++    ("r/LocalLLaMA best local model", "LocalLLaMA reddit best local model"),
++    ('"voice assistant" latency', "voice assistant latency"),
++    ('intitle:"release notes" hermes', "release notes hermes"),
++    ("hermes OR zoey -pinterest -site:pinterest.com filetype:pdf", "hermes zoey"),
++    ("site:reddit.com/r/selfhosted searxng captcha", "reddit selfhosted searxng captcha"),
++    ("plain words stay put", "plain words stay put"),
++    ("Zoey zoey ZOEY voice", "Zoey voice"),
++])
++def test_plain_query_strips_operators(raw, plain):
++    assert guard.plain_query(raw) == plain
++
++
++def test_plain_query_caps_words():
++    assert len(guard.plain_query(" ".join(f"w{i}" for i in range(40))).split()) == guard.MAX_WORDS
++
++
++def test_pushback_counts_live_refusals_not_suspensions():
++    data = {"unresponsive_engines": [["brave", "Suspended: too many requests"], ["duckduckgo", "CAPTCHA"],
++                                     ["startpage", "Suspended: CAPTCHA"], ["qwant", "too many requests"],
++                                     ["wikipedia", "HTTP error"]]}
++    assert guard.pushback_engines(data) == ["duckduckgo", "qwant"]
++    assert guard.suspended_engines(data) == ["brave", "startpage"]
++
++
++class Clock:
++    def __init__(self, t: float = 1000.0):
++        self.t = t
++        self.slept: list[float] = []
++
++    def __call__(self) -> float:
++        return self.t
++
++    def sleep(self, s: float) -> None:
++        self.slept.append(s)
++        self.t += s
++
++
++@pytest.fixture
++def g(tmp_path):
++    c = Clock()
++    return guard.Guard(path=tmp_path / "state.json", clock=c, sleep=c.sleep), c
++
++
++def test_same_plain_query_is_served_from_cache(g):
++    gd, c = g
++    assert gd.before("hermes agent", 5) == ("go", [])
++    gd.after("hermes agent", 5, data={"results": []}, results=[{"title": "a"}])
++    c.t += 30
++    assert gd.before("hermes agent", 5) == ("cached", [{"title": "a"}])
++
++
++def test_outgoing_queries_are_spaced(g):
++    gd, c = g
++    assert gd.before("one", 5)[0] == "go"
++    assert gd.before("two", 5)[0] == "go"
++    assert c.slept and abs(c.slept[0] - guard.MIN_GAP) < 1e-6
++
++
++def test_budget_per_minute_fails_fast(g):
++    gd, c = g
++    for i in range(guard.PER_MIN):
++        assert gd.before(f"q{i}", 5)[0] == "go"
++    verdict, why = gd.before("one more", 5)
++    assert verdict == "wait_fail" and "budget" in why
++    c.t += 61
++    assert gd.before("one more", 5)[0] == "go"
++
++
++def test_engine_that_pushes_back_is_rested_then_returns(g):
++    gd, c = g
++    gd.before("a", 5)
++    gd.after("a", 5, data={"results": [{"engines": ["bing"]}], "unresponsive_engines": [["duckduckgo", "CAPTCHA"]]})
++    c.t += 5
++    assert gd.before("b", 5) == ("go", ["duckduckgo"])
++    c.t += guard.ENGINE_BASE_S + 1
++    assert gd.before("c", 5) == ("go", [])
++    # a second refusal rests it twice as long
++    gd.after("c", 5, data={"results": [], "unresponsive_engines": [["duckduckgo", "CAPTCHA"]]})
++    c.t += guard.ENGINE_BASE_S + 1
++    assert gd.before("d", 5) == ("go", ["duckduckgo"])
++    # answering again clears it
++    gd.after("d", 5, data={"results": [{"engines": ["duckduckgo"]}]})
++    c.t += 2
++    assert gd.before("e", 5) == ("go", [])
++
++
++def test_searxng_429_backs_everything_off(g):
++    gd, c = g
++    gd.before("a", 5)
++    gd.after("a", 5, status=429)
++    c.t += 1
++    verdict, why = gd.before("b", 5)
++    assert verdict == "go" and c.slept  # 5 s cooldown -> 4 s wait fits MAX_WAIT
++    gd.after("b", 5, status=429)          # second strike: 10 s
++    c.t += 1
++    verdict, why = gd.before("c", 5)
++    assert verdict == "wait_fail" and "backing off" in why
++
++
++def test_engines_param_leaves_benched_out():
++    assert guard.engines_param(["bing", "duckduckgo", "wikipedia"], ["duckduckgo"]) == "bing,wikipedia"
++    assert guard.engines_param(["bing"], []) is None
++    assert guard.engines_param(None, ["duckduckgo"]) is None
++
++
++# --- the provider ---------------------------------------------------------------------------------
++
++@pytest.fixture
++def provider(monkeypatch, tmp_path):
++    monkeypatch.setenv("SEARXNG_URL", "http://127.0.0.1:8080")
++    monkeypatch.setenv("HERMES_SEARXNG_GUARD_STATE", str(tmp_path / "guard.json"))
++    monkeypatch.setattr(guard, "MIN_GAP", 0.0)
++    monkeypatch.setattr("plugins.web.searxng.provider.provider_env",
++                        lambda name: "http://127.0.0.1:8080" if name == "SEARXNG_URL" else "")
++    calls: list[tuple[str, dict]] = []
++    replies: dict[str, object] = {}
++
++    def fake_get(label, url, *, params, headers, timeout, logger, reach_target=None):
++        calls.append((url, dict(params)))
++        r = replies.get(url.rsplit("/", 1)[-1])
++        if isinstance(r, dict) and "error" in r:
++            return None, r
++        return r, None
++
++    monkeypatch.setattr("plugins.web.searxng.provider.http_get_json", fake_get)
++    return SearXNGWebSearchProvider(), calls, replies
++
++
++def test_provider_sends_plain_query_and_caches(provider):
++    p, calls, replies = provider
++    replies["search"] = {"results": [{"title": "T", "url": "https://x", "content": "c", "engines": ["bing"]}]}
++    out = p.search("site:github.com hermes agent", 5)
++    assert out["success"] and out["data"]["web"][0]["url"] == "https://x"
++    assert calls[0][1]["q"] == "github hermes agent"
++    assert p.search("site:github.com  hermes   agent", 5)["data"]["web"][0]["url"] == "https://x"
++    assert len(calls) == 1  # second ask came from the cache
++
++
++def test_provider_rests_captcha_engine_on_next_query(provider):
++    p, calls, replies = provider
++    replies["search"] = {"results": [{"title": "T", "url": "u", "content": "", "engines": ["bing"]}],
++                         "unresponsive_engines": [["duckduckgo", "CAPTCHA"]]}
++    replies["config"] = {"engines": [{"name": "bing", "enabled": True, "categories": ["general"]},
++                                     {"name": "duckduckgo", "enabled": True, "categories": ["general"]},
++                                     {"name": "flickr", "enabled": True, "categories": ["images"]}]}
++    p.search("first", 5)
++    p.search("second", 5)
++    search_calls = [c for c in calls if c[0].endswith("/search")]
++    assert "engines" not in search_calls[0][1]
++    assert search_calls[1][1]["engines"] == "bing"
++
++
++def test_provider_operator_only_query_fails_plainly(provider):
++    p, calls, _ = provider
++    out = p.search('-site:pinterest.com filetype:pdf', 5)
++    assert out["success"] is False and "plain keywords" in out["error"]
++    assert calls == []
++
++
++def test_provider_guard_off_sends_raw(provider, monkeypatch):
++    p, calls, replies = provider
++    monkeypatch.setenv("HERMES_SEARXNG_GUARD", "0")
++    replies["search"] = {"results": []}
++    p.search("site:github.com hermes", 5)
++    assert calls[0][1]["q"] == "site:github.com hermes"

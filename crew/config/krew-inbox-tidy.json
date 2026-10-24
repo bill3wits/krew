@@ -1,0 +1,4 @@
+{
+ "_doc": "Reference-install values for scripts/krew-inbox-organize.py (the user 2026-10-02: per-reference-install values live in config, never in code). kept_folders: top-level folders of the deliverables inbox that the tidy never shelves - a live writer's folder, so each day's file stays whole. Kill: KREW_INBOX_KEPT_FOLDERS=0. Another path: KREW_INBOX_TIDY_CONFIG.",
+ "kept_folders": ["announcer"]
+}

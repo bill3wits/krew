@@ -1,0 +1,10 @@
+# krew: opt-in (a patrol: off by default; `krew-crew-install --enable tool-watch` turns its timer on;
+# $KREW_HOME/krew-tool-watch.off pauses it)
+[Unit]
+Description=krew tool-watch: the front door's tool-call watch: her calls, failures and retries; one card when her failure rate jumps (report-only until KREW_TOOL_WATCH_CARDS=1)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run krew-tool-watch.py tick
+TimeoutStartSec=90
+Nice=10

@@ -1,0 +1,12 @@
+# krew: opt-in (a dated one-shot: enabled on a fresh install it fires at once, for nothing); `--enable <name>` turns it on, `--enable all` never does.
+# The reference install's one-shot, dated as it ran there (three days after the hands tool schemas were fixed).
+# Persistent=true: enabled later, it fires once at once. init writes it and never enables it unnamed.
+[Unit]
+Description=One shot, 2026-10-03 09:30: re-measure Crissa's hands step cap after three days on the fixed tool schemas
+
+[Timer]
+OnCalendar=2026-10-03 09:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

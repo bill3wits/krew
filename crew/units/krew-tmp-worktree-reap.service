@@ -1,0 +1,9 @@
+# krew: report (and, when armed, reap) git worktrees left in /tmp. REPORT-ONLY unless KREW_TMP_WORKTREE_REAP=1.
+# Off: ~/.hermes/tmp-worktree-reap.off. Repos it looks at: KREW_WORKTREE_REPOS (colon list).
+[Unit]
+Description=krew tmp-worktree-reap (report-only by default)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run tmp-worktree-reap.py
+Nice=10

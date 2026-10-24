@@ -1,0 +1,21 @@
+# krew: the board gate, every 2 min. Routes blocked cards, files reviews, watches liveness, reaps orphan workers,
+# trips the salad and cron-streak breakers. Values are the reference install's: liveness acts, orphans are reaped,
+# the review and ownerless gates are off (the review-route hook does reviews), the safety gate enforces.
+# Report-only run by hand: krew-crew-run kanban-board-gate.py --dry-run
+# Second step, as on the reference install: krew-mode's `hold-sweep` (release GPU holds whose cards are gone, start what
+# they parked) through krew-mode-hold-sweep, which runs the one mode command every krew caller runs
+# (crew/lib/krew_mode_cmd.py); a failed sweep fails the unit, as there (KREW_MODE_SWEEP_STRICT=0 only reports it).
+# The reference unit's third step (a Wall-side pose sync) belongs to the Wall pack and is not here.
+[Unit]
+Description=krew board gate + GPU hold sweep
+
+[Service]
+Type=oneshot
+Environment=KREW_LIVENESS_ACT=1
+Environment=KREW_ORPHAN_REAP=1
+Environment=KREW_REVIEW_GATE=0
+Environment=KREW_OWNERLESS_GATE=0
+Environment=KREW_T0_MODE=enforce
+ExecStart=-/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run kanban-board-gate.py
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run krew-mode-hold-sweep
+TimeoutStartSec=100

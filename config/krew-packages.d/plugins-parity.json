@@ -1,0 +1,13 @@
+{
+  "_about": "The reference install's plugins brought across whole (the owner 2026-10-10): krew-complete-probe, the reference's kanban_task_completed spike observer, shipped and enabled on no profile (as the reference). The other plugins this pass touched (krew-kanban-lean, krew-docs, krew-render, krew-board, krew-comfy) keep their files and their entries in config/krew-packages.json.",
+  "packages": {
+    "krew-complete-probe": {
+      "kind": "plugin",
+      "about": "A spike probe: one JSON line per kanban_task_completed hook fire under $KREW_HOME/spikes/kanban-complete-hook (KREW_KANBAN_HOOK_SPIKE_DIR). Observer only; enabled nowhere by default.",
+      "files": [
+        "plugins/krew-complete-probe/__init__.py",
+        "plugins/krew-complete-probe/plugin.yaml"
+      ]
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "_about": "krew's Control Panel add-on (krew-panel-tiles-20261006). Crissa owns the one Control Panel, in the Wall (the owner 2026-10-06); krew ships only its few tiles for the panel's bottom section and the agent-side panel_* tools. Machine values: `panel:` in krew.yaml (config/krew.example.yaml). Tools lifted by integrations/krew-house/tools/port_panel_tools.py.",
+  "packages": {
+    "krew-panel": {
+      "kind": "plugin",
+      "about": "panel_units, panel_journal, panel_script, panel_log, panel_security, panel_health (reads; run=true starts a battery), panel_camera_home, panel_kiosk, panel_announcer (the safe buttons, each reporting what landed). Same routes the panel's own page calls: no authority the glass lacks. Unset panel.url = every tool says it is not configured and sends nothing.",
+      "files": [
+        "plugins/krew-panel/__init__.py",
+        "plugins/krew-panel/plugin.yaml",
+        "plugins/krew-panel/krew_settings.py"
+      ],
+      "optional_imports": [
+        "ruamel",
+        "yaml"
+      ]
+    },
+    "krew-panel-skill": {
+      "kind": "skills",
+      "about": "krew-panel: look before you blame; the four buttons.",
+      "files": [
+        "skills/krew-panel/SKILL.md"
+      ]
+    },
+    "panel-tiles": {
+      "kind": "scripts",
+      "about": "panel/krew-panel-tiles.py (+ its krew_settings.py copy), installed to $KREW_HOME/panel: writes krew's add-on manifest (schema zoeyos-panel-addon/v1) into the Crissa panel's add-on folder - the host gateway, every per-profile gateway, the dashboard, crew/kanban (the loop's last run, from crew's krew-run-status) and the Janitor's report (both with their timer's Run now), and panel.tiles.extra. show / write / remove.",
+      "files": [
+        "panel/krew-panel-tiles.py",
+        "panel/krew_settings.py"
+      ],
+      "optional_imports": [
+        "hermes_yaml",
+        "yaml",
+        "ruamel"
+      ]
+    },
+    "panel-tiles-install": {
+      "kind": "scripts",
+      "about": "krew-install's step: places panel/ and writes the manifest when it finds the panel (panel.tiles.dir, $ZOEYOS_HOME/panel.d, ~/.zoeyos/panel.d).",
+      "files": [
+        "scripts/krew_install_panel_tiles.py"
+      ]
+    }
+  }
+}

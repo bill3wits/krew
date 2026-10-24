@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "updated": null,
+  "notes": "Living trusted-source list (the reference install's, as a seed). Scout's monthly scan proposes additions into proposed[]; Steward/Ada promote. A source that fails 3 days in a row drops to stale; pinned never auto-drops. krew-crew-install.py copies this to KREW_DOCS_DIR/TEAM-RESEARCH-SOURCES.json when that file is missing.",
+  "sources": [
+    {
+      "id": "nnt",
+      "enabled": true,
+      "kind": "youtube",
+      "name": "The Next New Thing",
+      "url": "https://www.youtube.com/@TheNextNewThingAI",
+      "channel_id": "UCNZEktrsM5oJZ-MK4jKPMOQ",
+      "trust": "pinned",
+      "why": "GitHub-find roundups for local/open tools"
+    },
+    {
+      "id": "hn",
+      "enabled": true,
+      "kind": "hn",
+      "name": "Hacker News",
+      "url": "https://news.ycombinator.com",
+      "query": "local llm OR hermes agent OR vllm OR llama.cpp",
+      "trust": "pinned",
+      "why": "museum TV Time primary feed"
+    },
+    {
+      "id": "localllama",
+      "enabled": true,
+      "kind": "rss",
+      "name": "r/LocalLLaMA",
+      "url": "https://www.reddit.com/r/LocalLLaMA/hot.rss?limit=20",
+      "trust": "pinned",
+      "why": "local-model practice",
+      "ua": "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"
+    },
+    {
+      "id": "hermes-docs",
+      "enabled": true,
+      "kind": "local",
+      "name": "Hermes user-guide on disk",
+      "trust": "pinned",
+      "why": "TV Time required on-box docs (tools, skills, cron, kanban)",
+      "path": "~/.hermes/hermes-agent/website/docs/user-guide"
+    },
+    {
+      "id": "nous",
+      "enabled": true,
+      "kind": "web",
+      "name": "Nous Research / Hermes agent",
+      "url": "https://github.com/NousResearch/hermes-agent",
+      "trust": "pinned",
+      "why": "runtime we run"
+    },
+    {
+      "id": "vllm",
+      "enabled": true,
+      "kind": "github",
+      "name": "vLLM",
+      "url": "https://github.com/vllm-project/vllm",
+      "trust": "pinned",
+      "why": "brains serve"
+    },
+    {
+      "id": "syntax",
+      "enabled": true,
+      "kind": "rss",
+      "name": "Syntax",
+      "url": "https://feed.syntax.fm/rss",
+      "trust": "watch",
+      "why": "museum craft-dialogue list; two developers talking shop. Query was generic 'Syntax' and resolved English-grammar pages; pinned query to syntax.fm."
+    },
+    {
+      "id": "ai-search",
+      "enabled": true,
+      "kind": "youtube",
+      "name": "AI Search",
+      "url": "https://www.youtube.com/@theAIsearch",
+      "channel_id": "UCIgnGlGkVRhd4qNFcEwLL4A",
+      "trust": "trusted",
+      "why": "Weekly AI news and open-tool roundups; titles plus descriptions (TEAM_SOURCES_V2) name the tools and repos. Second next-new-thing source."
+    }
+  ],
+  "proposed": []
+}

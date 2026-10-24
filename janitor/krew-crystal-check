@@ -1,0 +1,377 @@
+#!/usr/bin/env python3
+"""krew-crystal-check — hard complete acceptance (the owner 2026-08-09).
+
+Prodgate-adjacent: workers and Vera run this before kanban_complete / accept.
+Exit 0 = crystallized. Exit 2 = reject complete.
+
+Crystal (need ≥1 unless orchestration-only — see below):
+  A. Deliverable file under ~/Desktop/deliverables (or /deliverables)
+     OR under card workspace if workspace is dir: (not throwaway scratch)
+     OR under the rails repo/display/delight-lab/ for delight cards
+     A Desktop .md also needs its .html sibling (crew-report-html.py --file).
+  B. Decision pin: row in <memory store>/ms/decisions.json matching
+     summary/metadata (env+package+decision) with ts today or --loose
+  C. Host action evidence in summary: smoke GREEN, unit restart, applied==,
+     or metadata.applied / metadata.smoke
+
+Orchestration (Ada intake breakdown only): allow if metadata.created_cards
+non-empty OR summary lists ≥1 t_* child and no "research-only" markers —
+still recommended to write a breakdown .md under deliverables.
+
+Usage:
+  krew-crystal-check                    # env HERMES_KANBAN_TASK + summary stdin/args
+  krew-crystal-check --task t_xxx --summary '…' [--artifact PATH]…
+  krew-crystal-check --paths PATH…      # only check files exist under deliverables
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+from pathlib import Path
+
+import sys as _sys
+_HERE = Path(__file__).resolve().parent
+if str(_HERE) not in _sys.path:
+    _sys.path.insert(0, str(_HERE))
+import krew_settings  # noqa: E402
+
+
+def _cfg(section: str) -> dict:
+    """One section of $KREW_HOME/janitor.yaml, or of $KREW_JANITOR_CONFIG (config/janitor.example.yaml lists every key)."""
+    return krew_settings.load(section, path=os.environ.get("KREW_JANITOR_CONFIG") or krew_settings.krew_home() / "janitor.yaml")
+
+
+def _p(v) -> Path:
+    return Path(os.path.expanduser(str(v)))
+
+_C = _cfg("crystal")
+DELIVERABLES = Path(os.environ.get("KREW_DELIVERABLES") or _p(_C.get("deliverables") or "~/Desktop/deliverables")).expanduser().resolve()
+DECISIONS = Path(os.environ.get("MS_DECISIONS") or _p(_C.get("decisions") or krew_settings.krew_home() / "ms" / "decisions.json"))
+RAILS = _p(_C.get("rails_repo") or "~/projects/rails")
+DELIGHT = RAILS / str(_C.get("delight_dir") or "display/delight-lab")
+
+
+def _expand(p: str) -> Path:
+    s = p.strip().strip("`\"'")
+    if s.startswith("{{deliverables_dir}}/"):
+        s = str(DELIVERABLES) + s[len("{{deliverables_dir}}"):]
+    if s.startswith("~/"):
+        s = str(Path.home() / s[2:])
+    return Path(s).expanduser()
+
+
+def _under(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root.resolve())
+        return True
+    except (ValueError, OSError):
+        return False
+
+
+def _is_durable_path(path: Path, workspace: str | None) -> bool:
+    if not path.is_file() or path.stat().st_size < 40:
+        return False
+    if _under(path, DELIVERABLES):
+        return True
+    if _under(path, DELIGHT):
+        return True
+    # Named project dirs that are real product (not board scratch)
+    if _under(path, RAILS / "display") or _under(path, RAILS / "docs"):
+        return True
+    if workspace:
+        ws = Path(workspace).expanduser()
+        if ws.is_dir() and "workspaces/t_" not in str(ws) and _under(path, ws):
+            return True
+        # dir: deliverables already covered
+    return False
+
+
+_ROOTS = [str(Path.home()), "/deliverables", "~/Desktop/" + DELIVERABLES.name, "~/" + str(RAILS.relative_to(Path.home())) if str(RAILS).startswith(str(Path.home()) + "/") else str(RAILS)]
+
+
+def _paths_from_text(text: str) -> list[Path]:
+    found: list[Path] = []
+    if not text:
+        return found
+    pats = [
+        r"(?:" + "|".join(re.escape(x) for x in _ROOTS) + r")[^\s\)\"'`,]+",
+        r"display/delight-lab/[^\s\)\"'`,]+",
+    ]
+    for pat in pats:
+        for m in re.findall(pat, text):
+            found.append(_expand(m.rstrip(".,;:")))
+    return found
+
+
+def _decision_hit(text: str, loose: bool) -> list[str]:
+    if not DECISIONS.is_file():
+        return []
+    try:
+        data = json.loads(DECISIONS.read_text())
+    except Exception:
+        return []
+    hits = []
+    blob = (text or "").lower()
+    # 2026-09-26: decisions.json is a top-level LIST on disk (608 rows), not
+    # {"decisions": [...]}. data.get crashed the WHOLE gate (both CLI and the
+    # kanban_complete plugin) with AttributeError on every card. Accept both
+    # shapes.
+    rows = data.get("decisions") if isinstance(data, dict) else data
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        pkg = str(row.get("package") or "").strip().lower()
+        env = str(row.get("env") or "").strip().lower()
+        dec = str(row.get("decision") or "").strip().lower()
+        # A row with no package names nothing, and "" is a substring of every
+        # summary — so these rows credited EVERY card and rule B passed
+        # unconditionally (9 such rows on 2026-08-26). Require a real package,
+        # and require it to actually appear in the text.
+        if not pkg or pkg not in blob:
+            continue
+        hits.append(f"{env}/{pkg}:{dec}")
+        unlock = row.get("unlock")
+        if dec == "applied" and isinstance(unlock, dict):
+            disp = str(unlock.get("disposition") or "")
+            if disp == "keep" and not str(unlock.get("kpi_id") or "").strip():
+                hits.append(f"{env}/{pkg}:unlock-keep-missing-kpi")
+    return hits
+
+
+_RUNNABLE_SUFFIXES = (".py", ".sh")
+_RAN_RE = re.compile(r"(?im)\bran:\s*(\S[^\n]*?)\s+rc\s*=\s*(\d+)\b")
+
+
+def _is_runnable(p: Path) -> bool:
+    try:
+        if p.is_dir():
+            return any(child.suffix.lower() in _RUNNABLE_SUFFIXES for child in p.iterdir())
+        return p.suffix.lower() in _RUNNABLE_SUFFIXES and p.is_file()
+    except OSError:
+        return False
+
+
+def _ran_evidence(text: str, metadata: dict | None) -> tuple[str, str] | None:
+    """('command', 'rc') from `ran: <cmd> rc=<n>` in the summary or metadata.ran."""
+    meta = metadata or {}
+    ran = meta.get("ran")
+    if isinstance(ran, dict) and str(ran.get("cmd") or "").strip() and ran.get("rc") is not None:
+        return str(ran["cmd"]).strip(), str(ran["rc"])
+    m = _RAN_RE.search(text or "")
+    if m:
+        return m.group(1).strip(), m.group(2)
+    return None
+
+
+def _host_action(text: str, metadata: dict | None) -> bool:
+    meta = metadata or {}
+    if meta.get("applied") or meta.get("smoke") or meta.get("host_action"):
+        return True
+    t = (text or "").lower()
+    keys = (
+        "smoke green",
+        "smoke ok",
+        "apply_ok",
+        "applied ",
+        "uv pip install",
+        "systemctl --user restart",
+        "systemctl restart",
+        "record-decision",
+        "decisions.json",
+        "pending_apply",
+        "tts smoke",
+        "import ok",
+        "play_ok",
+    )
+    return any(k in t for k in keys)
+
+
+def _orchestration(text: str, metadata: dict | None) -> bool:
+    meta = metadata or {}
+    cards = meta.get("created_cards") or meta.get("children") or []
+    if isinstance(cards, (list, tuple)) and len(cards) >= 1:
+        return True
+    if re.search(r"\bt_[a-f0-9]{6,}\b", text or "") and re.search(
+        r"\b(spawned|created|fan-?out|breakdown|triage|assigned)\b",
+        (text or ""),
+        re.I,
+    ):
+        return True
+    return False
+
+
+def evaluate(
+    *,
+    summary: str,
+    artifacts: list[str] | None = None,
+    metadata: dict | None = None,
+    workspace: str | None = None,
+    title: str = "",
+    loose: bool = False,
+) -> tuple[bool, list[str], list[str]]:
+    """Return (ok, crystals, errors)."""
+    crystals: list[str] = []
+    errors: list[str] = []
+    meta = metadata or {}
+    text = " ".join(
+        [
+            summary or "",
+            title or "",
+            json.dumps(meta, default=str) if meta else "",
+        ]
+    )
+    paths = list(artifacts or [])
+    paths += [str(p) for p in _paths_from_text(text)]
+    # metadata.artifacts
+    ma = meta.get("artifacts") or meta.get("deliverables") or []
+    if isinstance(ma, str):
+        ma = [ma]
+    paths += [str(x) for x in ma]
+
+    durable_ok = False
+    for raw in paths:
+        p = _expand(str(raw))
+        if _is_durable_path(p, workspace):
+            crystals.append(f"A:{p}")
+            durable_ok = True
+            if (
+                p.suffix.lower() == ".md"
+                and _under(p, DELIVERABLES)
+                and not p.with_suffix(".html").is_file()
+            ):
+                errors.append(
+                    "markdown deliverable needs HTML sibling "
+                    f"{p.with_suffix('.html')} "
+                    f"(python3 scripts/crew-report-html.py --file {p})"
+                )
+        elif p.is_file():
+            errors.append(
+                f"file exists but not under deliverables/delight-lab/docs: {p}"
+            )
+        else:
+            if raw and ("/" in str(raw) or str(raw).endswith(".md")):
+                errors.append(f"missing path: {p}")
+
+    # D. A deliverable that runs (a .py/.sh, or a folder of them) must carry
+    # the one line that proves it ran: `ran: <exact command> rc=<n>` (or
+    # metadata.ran = {"cmd": ..., "rc": n}). 2026-09-12: the drift-recon
+    # harness completed with "runs cleanly (rc=0)" and a durable folder, and
+    # its command builder produced `python3 /usr/bin/python3 mock_worker.py`
+    # — Apport dialogs, not a run. The claim was words; this asks for the
+    # command, where the bug would have been visible.
+    runnable = [p for p in (_expand(str(r)) for r in paths) if _is_runnable(p)]
+    if runnable:
+        ran = _ran_evidence(text, meta)
+        if ran:
+            crystals.append(f"R:ran rc={ran[1]}")
+        else:
+            errors.append(
+                "runnable deliverable needs its run in the summary: "
+                "`ran: <exact command> rc=<n>` (or metadata.ran={cmd, rc}) — "
+                + ", ".join(str(p) for p in runnable[:3])
+            )
+
+    dec = _decision_hit(text, loose)
+    if dec:
+        bad_unlock = [h for h in dec if h.endswith(":unlock-keep-missing-kpi")]
+        good = [h for h in dec if h not in bad_unlock]
+        if good:
+            crystals.append("B:" + ",".join(good[:5]))
+        for h in bad_unlock:
+            errors.append(
+                "applied keep without kpi_id — Vera unlock: name the KPI "
+                "(ops tok/s = speed_probe) or use land-only/toss "
+                f"({h})"
+            )
+
+    if _host_action(text, meta):
+        crystals.append("C:host_action")
+
+    if _orchestration(text, meta) and not durable_ok:
+        # Ada breakdown-only: require either durable note OR explicit children
+        if meta.get("created_cards") or re.search(r"\bt_[a-f0-9]{6,}\b", text):
+            crystals.append("O:orchestration")
+
+    if crystals:
+        if any("needs HTML sibling" in e or "unlock" in e or "runnable deliverable" in e for e in errors):
+            return False, crystals, errors
+        return True, crystals, errors
+
+    errors.append(
+        "no crystal: need deliverable under ~/Desktop/deliverables "
+        "(or delight-lab), and/or decisions.json pin cited, and/or measured "
+        "host action in summary; pass artifacts=[...] to kanban_complete"
+    )
+    return False, crystals, errors
+
+
+def main() -> int:
+    if os.environ.get("KREW_CRYSTAL_GATE", "1").strip().lower() in (
+        "0",
+        "false",
+        "no",
+        "off",
+    ):
+        print("krew-crystal-check: GATE OFF (KREW_CRYSTAL_GATE=0)")
+        return 0
+
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--task", default=os.environ.get("HERMES_KANBAN_TASK", ""))
+    ap.add_argument("--summary", default="")
+    ap.add_argument("--title", default="")
+    ap.add_argument("--workspace", default=os.environ.get("HERMES_KANBAN_WORKSPACE", ""))
+    ap.add_argument("--artifact", action="append", default=[])
+    ap.add_argument("--metadata-json", default="")
+    ap.add_argument("--loose", action="store_true")
+    ap.add_argument("--paths", nargs="*", help="only verify these paths are durable")
+    args = ap.parse_args()
+
+    if args.paths:
+        bad = []
+        for raw in args.paths:
+            p = _expand(raw)
+            if not _is_durable_path(p, args.workspace or None):
+                bad.append(str(p))
+        if bad:
+            print("FAIL paths not durable:", *bad, sep="\n  ")
+            return 2
+        print("OK paths")
+        return 0
+
+    summary = args.summary
+    if not summary and not sys.stdin.isatty():
+        summary = sys.stdin.read()
+
+    meta = {}
+    if args.metadata_json:
+        meta = json.loads(args.metadata_json)
+
+    ok, crystals, errors = evaluate(
+        summary=summary,
+        artifacts=args.artifact,
+        metadata=meta,
+        workspace=args.workspace or None,
+        title=args.title,
+        loose=args.loose,
+    )
+    if ok:
+        print("OK crystal:", "; ".join(crystals))
+        if errors:
+            print("notes:", *errors, sep="\n  ")
+        return 0
+    print("FAIL krew-crystal-check — refuse kanban_complete")
+    for e in errors:
+        print(" ", e)
+    print(
+        f"Fix: write {DELIVERABLES}/<name>.md (or delight-lab path), "
+        "record decisions.json pin, or apply+smoke — then pass "
+        "artifacts=['/abs/path'] and crystal evidence in summary."
+    )
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

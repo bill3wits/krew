@@ -1,0 +1,14 @@
+# krew: opt-in (the reference install keeps it off: ~/.hermes/krew-kit-reapply.off is set there).
+# Watches the hermes tree: .git/logs/HEAD moves when `hermes update` resets the checkout. The off file stops the WATCH,
+# not just the work (a burst of HEAD writes would otherwise trip the service's start limit and take the .path down).
+# Removing the off file needs the .path started again: systemctl --user restart krew-kit-reapply.path
+[Unit]
+Description=watch the hermes tree for `hermes update` (off switch: ~/.hermes/krew-kit-reapply.off)
+ConditionPathExists=!%h/.hermes/krew-kit-reapply.off
+
+[Path]
+PathModified=%h/.hermes/hermes-agent/.git/logs/HEAD
+Unit=krew-kit-reapply.service
+
+[Install]
+WantedBy=default.target

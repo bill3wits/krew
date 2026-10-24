@@ -1,0 +1,48 @@
+{
+  "_why": "Places: the folders whose CONTENTS change (product refs, render outputs, ready-to-post drafts), described from what is on disk by crew/lib/krew_places.py into map_file (one section per folder: path, files, its README.md/SOURCES.md). Index map_file's folder as the docs source `places` (krew.yaml docs.sources: places: ~/.krew/places) so krew_docs answers 'where is X' for a folder made yesterday. krew-places-watch rewrites the map and rebuilds that source seconds after a drop. Paths here are examples: point them at your own folders.",
+  "map_file": "~/.krew/places/PLACES.md",
+  "notes": [
+    "README.md",
+    "SOURCES.md",
+    "NOTES.md"
+  ],
+  "places": [
+    {
+      "name": "reference photos",
+      "root": "~/.krew/memory/refs",
+      "kind": "folders",
+      "max_depth": 3,
+      "pattern": "~/.krew/memory/refs/products/<model>/",
+      "what": "Krew-only reference images of the user's own gear and products, one folder per model with a SOURCES.md saying where each image came from. Look here before rendering or describing a product he owns.",
+      "rule": "REFERENCE ONLY: use them to check a prompt's shape, colour and details. Never a render's first frame, never an output, never in the public repo or a pack (third-party photos)."
+    },
+    {
+      "name": "render order outputs",
+      "root": "~/.krew/memory/render-orders/out",
+      "kind": "render-orders",
+      "orders": "~/.krew/memory/render-orders",
+      "pattern": "~/.krew/memory/render-orders/out/<order id>/",
+      "what": "What each render order made (stills, clips), one folder per order id. Orders are filed with scripts/render-orders.py add and drained in the render window by scripts/heavy-render.py; the order file (pending/running/done/failed) names its card and prompt.",
+      "rule": "A render is a draft until the user approves it; approved marketing goes to ready-to-post."
+    },
+    {
+      "name": "ready to post",
+      "root": "~/Desktop/krew-deliverables/ready-to-post",
+      "kind": "folders",
+      "max_depth": 2,
+      "pattern": "~/Desktop/krew-deliverables/ready-to-post/<channel>/<day>/",
+      "what": "Marketing drafts ready for the user to post himself, by channel (x, google-ads) and day. The team_outbox writes here.",
+      "rule": "Nothing here is posted by the house; the user posts it."
+    }
+  ],
+  "watch": {
+    "_why": "crew/scripts/krew-places-watch.py (krew-places-watch.service): inotify on every place root and its subfolders; a burst of drops settles into ONE map rewrite + `docs_index.py build --source places`. A .path unit cannot do this: PathChanged watches one directory's own entries, never its subfolders.",
+    "settle_s": 3,
+    "max_wait_s": 30,
+    "rescan_s": 60,
+    "index_python": "~/.krew/embedder-venv/bin/python",
+    "threads": 2,
+    "timeout_s": 300,
+    "off_file": "~/.hermes/krew-places-watch.off"
+  }
+}

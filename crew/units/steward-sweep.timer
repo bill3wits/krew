@@ -1,0 +1,12 @@
+# krew: opt-in (the owner 2026-10-08: the steward sweep defaults off; `krew-crew-install --enable steward-sweep`
+# turns it on, and $KREW_HOME/steward-sweep.off pauses it)
+[Unit]
+Description=krew steward sweep, hourly (catches up after downtime)
+
+[Timer]
+OnCalendar=*-*-* *:23:00
+Persistent=true
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

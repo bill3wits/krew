@@ -1,0 +1,125 @@
+#!/bin/bash
+# fleet-bootcheck: the post-reboot loop-closer. Runs ONCE at boot (a system unit: units/system/fleet-bootcheck.service,
+# which krew-install.py never installs; copy it by hand with sudo if you want it).
+#
+# Only does anything after a deliberate reboot (the breadcrumb file is present). Then it waits for the configured
+# services to come green, sends the confirm (or escalates) through the configured notify command, and marks the
+# assent-reboot kanban task done.
+#
+# Every machine value is config: $FLEET_BOOTCHECK_CONFIG (default /etc/fleet-bootcheck.json; shape and the reference
+# install's values: config/fleet-bootcheck.example.json). checks_live runs when the live_switch file exists, else
+# checks_legacy. No config, or an unreadable one, logs and exits 0: nothing to confirm against.
+
+set -u
+
+CONFIG="${FLEET_BOOTCHECK_CONFIG:-/etc/fleet-bootcheck.json}"
+
+cfg() {  # cfg <key> -> the config's string value ('' if absent)
+  python3 -c 'import json,sys; v=json.load(open(sys.argv[1])).get(sys.argv[2], ""); print(v if isinstance(v, str) else "")' "$CONFIG" "$1" 2>/dev/null
+}
+
+if ! python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$CONFIG" 2>/dev/null; then
+  echo "$(date '+%F %T') fleet-bootcheck: no readable config at $CONFIG - nothing to confirm" >&2
+  exit 0
+fi
+
+HERMES="$(cfg hermes)"
+NOTIFY="$(cfg notify)"
+LOGDIR="$(cfg logdir)"
+BREADCRUMB="${LOGDIR}/$(cfg breadcrumb)"
+BOOTLOG="${LOGDIR}/bootcheck.log"
+LIVE_SWITCH="$(cfg live_switch)"
+
+log() { echo "$(date '+%F %T') $*" | tee -a "$BOOTLOG"; }
+
+# Only act on a deliberate reboot. A normal boot (power, manual) leaves no breadcrumb -> exit quietly.
+if [ ! -f "$BREADCRUMB" ]; then
+  log "No reboot breadcrumb — ordinary boot. Nothing to confirm."
+  exit 0
+fi
+
+PKGS="$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('packages',''))" "$BREADCRUMB" 2>/dev/null)"
+log "Deliberate reboot detected (packages: $PKGS). Verifying services..."
+
+SET="checks_legacy"
+if [ "${FLEET_BOOTCHECK_LIVE:-0}" = "1" ] || { [ -n "$LIVE_SWITCH" ] && [ -e "$LIVE_SWITCH" ]; }; then SET="checks_live"; fi
+
+# One line per check: name <TAB> tries <TAB> nap <TAB> probe (a shell command, every value shell-quoted).
+# With no checks in the config, the one services list (FLEET_BOOTCHECK_SERVICES, default ~/.krew/services.json of
+# the user this runs as; crew/lib/krew_services.py) is the check list: one check per approved row.
+SERVICES="${FLEET_BOOTCHECK_SERVICES:-$HOME/.krew/services.json}"
+KREW_LIB="$(cd "$(dirname "$0")/../../crew/lib" 2>/dev/null && pwd)"
+probes() {
+  python3 - "$CONFIG" "$SET" "$SERVICES" "$KREW_LIB" <<'PY'
+import json, shlex, sys
+cfg = json.load(open(sys.argv[1]))
+q = shlex.quote
+checks = cfg.get(sys.argv[2]) or []
+if not checks and sys.argv[3] and __import__("os").path.isfile(sys.argv[3]) and sys.argv[4]:
+    sys.path.insert(0, sys.argv[4])
+    import krew_services
+    checks = krew_services.bootcheck_checks(krew_services.load(sys.argv[3]))
+for c in checks:
+    kind, name = c.get("kind"), c.get("name") or "?"
+    if kind == "http":
+        probe = f"curl -sf -m 30 {q(c['url'])}"
+    elif kind == "port":
+        probe = f"ss -tlnH {q('sport = :' + str(int(c['port'])))} | grep -q LISTEN"
+    elif kind == "unit":
+        probe = f"systemctl is-active --quiet {q(c['unit'])}"
+    elif kind == "user_unit":
+        probe = f"env XDG_RUNTIME_DIR=/run/user/$(id -u) systemctl --user is-active --quiet {q(c['unit'])}"
+        if c.get("url"):
+            probe += f" && curl -sf -m 5 {q(c['url'])}"
+    else:
+        probe = "false"
+    print("\t".join([name, str(int(c.get("tries", 8))), str(int(c.get("nap", 5))), probe]))
+PY
+}
+
+check() {
+  local name="$1" probe="$2" tries="$3" nap="$4" i
+  for i in $(seq 1 "$tries"); do
+    if eval "$probe" >/dev/null 2>&1; then
+      log "  ✓ $name up (try $i)"
+      return 0
+    fi
+    sleep "$nap"
+  done
+  log "  ✗ $name DID NOT come up after $((tries*nap))s"
+  return 1
+}
+
+FAILED=""
+NAMES=""
+N=0
+while IFS=$'\t' read -r name tries nap probe; do
+  [ -z "$name" ] && continue
+  N=$((N+1)); NAMES="${NAMES:+$NAMES, }$name"
+  check "$name" "$probe" "$tries" "$nap" < /dev/null || FAILED="$FAILED $name"
+done < <(probes)
+
+if [ -z "$FAILED" ]; then
+  log "All $N services green."
+  $NOTIFY "✅ Rebooted overnight for [$PKGS]. All services back up: $NAMES."
+  # Close the assent task — mark it done (the reboot is now finished + verified).
+  TID="$($HERMES kanban list --json 2>/dev/null | python3 -c "
+import sys,json
+try: tasks=json.load(sys.stdin)
+except: tasks=[]
+if isinstance(tasks,dict): tasks=tasks.get('tasks',tasks.get('items',[]))
+for t in tasks:
+    if t.get('idempotency_key')=='assent-reboot' or t.get('title','').startswith('ASSENT: reboot'):
+        print(t.get('id','')); break
+")"
+  if [ -n "$TID" ]; then
+    $HERMES kanban complete "$TID" 2>/dev/null && log "Assent task $TID marked complete."
+  fi
+else
+  log "ESCALATION — services did NOT return:$FAILED"
+  $NOTIFY "🚨 Rebooted for [$PKGS] but these services did NOT come back:$FAILED — needs a look. (self-heal will also attempt restarts)"
+fi
+
+# Consume the breadcrumb so a future ordinary boot stays quiet.
+rm -f "$BREADCRUMB"
+log "Boot-check done; breadcrumb cleared."

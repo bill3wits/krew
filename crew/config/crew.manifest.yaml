@@ -1,0 +1,54 @@
+schema: krew_hermes_crew/v3
+# Who does what on the crew: the profiles, their brain, their gateway, their voice pin and the toolset each
+# carries. Machine values (endpoints, ports, voice files) are placeholders here: the live ones are in each
+# profile's config.yaml (config/config.example.yaml), $HERMES_HOME/.env (config/env.example) and
+# $KREW_HOME/services.json. Names stay: every SOUL, skill and default keys on them (souls/README.md).
+brains:
+  # any OpenAI-compatible endpoint; the presets are crew/config/brain-presets.json (`krew-install.py init --brains`):
+  # engines (below, the reference install's two vLLM servers), claude (https://api.anthropic.com/v1, claude-fable-5-1) and
+  # xai (https://api.x.ai/v1, grok-4.7), each for both brains
+  ops:  {base_url: "http://127.0.0.1:8000/v1", model: ops, role: "the front door's brain"}
+  crew: {base_url: "http://127.0.0.1:8005/v1", model: crew, role: "the crew's brain (workers, the decomposer)"}
+tts:
+  voice: {service: voice.service, port: 7789, role: "the mouth; each profile's voice pinned by NAME in its config"}
+  announcer: {voice: announcer, role: "PA only (completions, stuck, protocol), through the Wall's player"}
+# Gateway law: one host gateway serves every profile at /p/<profile>/v1 (KREW_GATEWAY_TOPOLOGY=host); Ada is
+# the sole kanban inbox and the dispatcher runs in the default profile's gateway (config.example.yaml kanban:).
+# A spawn-only profile has no long-lived gateway: the dispatcher spawns it per card (`hermes -p <p> ...`).
+gateway_always_on: [zoey, ada]
+gateway_never: [bash, lila, vera, scout, steward, judge]
+
+profiles:
+  zoey:    {brain: ops,  role: "Mouth + Chief of Staff: front door, last judgment before the owner", voice: zoey,
+            note: "Not a worker: never_dispatch. Creates cards for Ada. Generation three of the board is her needs_input list."}
+  ada:     {brain: crew, role: "orchestrator + kanban dispatcher", voice: ada,
+            note: "sole board inbox; the decomposer is auxiliary.kanban_decomposer on the crew brain; goal_judge is her crew auxiliary, not Vera; risky work goes to sandboxed consultants"}
+  steward: {brain: crew, role: "coder 2, default assignee, architect of record + M&S + security", voice: steward,
+            note: "an undecomposed Ready card lands on him and he bounces it to triage"}
+  scout:   {brain: crew, role: "low-privilege world/stack notes (search + web + file into the inbox only); Steward's researcher",
+            note: "spawn/cron + Crissa's team_scout one-offs; no terminal, no kanban, never a dispatch assignee"}
+  bash:    {brain: crew, role: "coder 1 (host implement)", voice: bash, note: "spawn only"}
+  lila:    {brain: crew, role: "designer / researcher (worker)", voice: lila,
+            note: "spawn only; Ada holds design cards and dispatches ephemeral Lila runs"}
+  vera:    {brain: crew, role: "board reviewer (change gate / crystal / taste)", voice: vera,
+            note: "spawn only; not the Goal-mode judge"}
+  judge:   {brain: crew, role: "one call, one verb on a diagnosed card", note: "spawn only; only the loop and the gate file judge cards"}
+
+toolset_matrix:  # the reference placement; config.example.yaml lists the same per profile
+  ada:     [kanban, clarify, file, memory, session_search, team, todo, skills, delegation]   # no host shell
+  zoey:    [hands, skill_read, zoeyos]                                                         # the rest lives in the hands child
+  bash:    [clarify, file, terminal, code_execution, memory, session_search, team, todo, skills]
+  steward: [clarify, file, terminal, code_execution, memory, session_search, team, todo, skills, delegation, cronjob, search]
+  scout:   [clarify, file, web, search, skills, memory, session_search]                       # no terminal / kanban / cronjob / delegation
+  lila:    [clarify, web, search, vision, memory, session_search, team, todo, skills, kanban_lean, image_gen]
+  vera:    [clarify, file, terminal, kanban_lean, web, search, memory, session_search, team, todo, skills]
+  judge:   [file, kanban_lean]
+security_model: |
+  Board routing: Ada only (dispatch_in_gateway + auto_decompose). Workers may be assignee=lila|bash|vera|steward
+  for a run (never scout, never judge). They must not re-fan-out the board graph (no reassign/create-assignee
+  chains). In-run subs (delegate_task) are fine. Crissa creates cards with default assignee ada. Bash has no board
+  tool beyond his card: ask Ada for Lila, do not invent assign paths.
+  delegate_task cannot change the terminal backend (in-process, toolset-intersect): risky operations route via
+  KANBAN DISPATCH, where workers spawn as separate processes on their own profile config, behind the rails
+  (rails/: the deny list, the tier-0 gate, prodgate). Ada carries the board; the host shell is bash/steward.
+  Native guards on: tirith pre-exec, redact_secrets, untrusted-content delimiters.

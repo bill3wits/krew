@@ -1,0 +1,21 @@
+{
+  "_about": "The profiles parity build (2026-10-10): the reference install's crew skills krew did not ship. Lila's glyph set (glyph-density, lila-glyph-catalog, picture-to-glyph, text-to-ascii) and Bash's xspaces-live (the live lap, which runs Crissa's scripts/xspaces-live.py). picture-to-glyph ships without the reference's refs/ (a watermarked stock image) and examples/ (renders of the reference home's door camera).",
+  "packages": {
+    "skills-crew-glyph": {
+      "kind": "skills",
+      "about": "Lila's glyph skills and Bash's live-lap skill, as the reference profiles carry them.",
+      "files": [
+        "skills/glyph-density/SKILL.md",
+        "skills/lila-glyph-catalog/SKILL.md",
+        "skills/picture-to-glyph/SKILL.md",
+        "skills/picture-to-glyph/scripts/img2glyph.py",
+        "skills/text-to-ascii/REFERENCE.md",
+        "skills/text-to-ascii/SKILL.md",
+        "skills/xspaces-live/SKILL.md"
+      ],
+      "optional_imports": [
+        "PIL"
+      ]
+    }
+  }
+}

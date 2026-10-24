@@ -1,0 +1,9 @@
+{
+  "_why": "Zoey's docs lookup (crew/lib/zoey_docs.py, her hands kit). sources = the docs-index sources she may read ([] = all); keep private notes, the board and deliverables out. queue = her suggestions, waiting for your review (crew/scripts/zoey-docs-review.py).",
+  "sources": ["hermes", "hermes-changes", "knowledge", "skills", "docs", "rails", "render", "places"],
+  "n": 5,
+  "chars": 700,
+  "timeout_s": 20,
+  "queue": "~/.hermes/zoey-docs-suggestions.jsonl",
+  "approved_dir": "~/.krew/references"
+}

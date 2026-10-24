@@ -1,0 +1,117 @@
+{
+ "source": "/srv/memory/ms/reports/ms-trail-<day>.json, applied.vllm-0271-cu132 (extracted 2026-09-30)",
+ "nights": {
+  "2026-09-17": {
+   "applied": {
+    "vllm-0271-cu132": {
+     "canary": "UNVERIFIED n/a 0.5B free 3387 MiB < 7109",
+     "skipped": "canary_unverified"
+    }
+   },
+   "ledger_unreadable": false
+  },
+  "2026-09-18": {
+   "applied": {
+    "vllm-0271-cu132": {
+     "canary": "UNVERIFIED n/a 0.5B free 5177 MiB < 7109",
+     "skipped": "canary_unverified"
+    }
+   },
+   "ledger_unreadable": false
+  },
+  "2026-09-19": {
+   "applied": {
+    "vllm-0271-cu132": {
+     "canary": "UNVERIFIED n/a 0.5B free 6501 MiB < 7109",
+     "skipped": "canary_unverified"
+    }
+   },
+   "ledger_unreadable": false
+  },
+  "2026-09-20": {
+   "applied": {
+    "vllm-0271-cu132": {
+     "canary": "UNVERIFIED n/a 0.5B free 5163 MiB < 7109",
+     "skipped": "canary_unverified"
+    }
+   },
+   "ledger_unreadable": false
+  },
+  "2026-09-21": {
+   "applied": {
+    "vllm-0271-cu132": {
+     "canary": "UNVERIFIED n/a 0.5B free 3275 MiB < 7109",
+     "skipped": "canary_unverified"
+    }
+   },
+   "ledger_unreadable": false
+  },
+  "2026-09-22": {
+   "applied": {
+    "vllm-0271-cu132": {
+     "canary": "UNVERIFIED n/a 0.5B free 5875 MiB < 7109",
+     "skipped": "canary_unverified"
+    }
+   },
+   "ledger_unreadable": false
+  },
+  "2026-09-23": {
+   "applied": {
+    "vllm-0271-cu132": {
+     "canary": "UNVERIFIED n/a 0.5B free 5314 MiB < 7109",
+     "skipped": "canary_unverified"
+    }
+   },
+   "ledger_unreadable": false
+  },
+  "2026-09-24": {
+   "applied": {
+    "vllm-0271-cu132": {
+     "canary": "UNVERIFIED n/a 0.5B free 6505 MiB < 7109",
+     "skipped": "canary_unverified"
+    }
+   },
+   "ledger_unreadable": false
+  },
+  "2026-09-25": {
+   "applied": {
+    "vllm-0271-cu132": {
+     "canary": "UNVERIFIED n/a 0.5B free 4717 MiB < 7109",
+     "skipped": "canary_unverified"
+    }
+   },
+   "ledger_unreadable": false
+  },
+  "2026-09-26": {
+   "applied": {},
+   "ledger_unreadable": true
+  },
+  "2026-09-27": {
+   "applied": {
+    "vllm-0271-cu132": {
+     "canary": "UNVERIFIED n/a 0.5B free 4265 MiB < 7109",
+     "skipped": "canary_unverified"
+    }
+   },
+   "ledger_unreadable": false
+  },
+  "2026-09-28": {
+   "applied": {
+    "vllm-0271-cu132": {
+     "canary": "UNVERIFIED n/a 0.5B free 5339 MiB < 7109",
+     "skipped": "canary_unverified"
+    }
+   },
+   "ledger_unreadable": false
+  },
+  "2026-09-29": {
+   "applied": {
+    "vllm-0271-cu132": {
+     "canary": "UNVERIFIED n/a 0.5B free 7043 MiB < 7109",
+     "skipped": "canary_unverified"
+    }
+   },
+   "ledger_unreadable": false
+  }
+ }
+}

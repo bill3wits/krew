@@ -1,0 +1,12 @@
+name: krew-skill-preload
+version: 1.1.0
+description: >
+  Skill bodies once per session for room-voice (api_server) sessions.
+  Wraps AIAgent.__init__ so HERMES_TUI_SKILLS (or krew_preload.skills)
+  land on ephemeral_system_prompt — the same path TUI already uses.
+  Not pre_llm_call (user message). No Hermes tree edit.
+author: krew
+entry: __init__.py
+kind: standalone
+requires_env: []
+provides: []

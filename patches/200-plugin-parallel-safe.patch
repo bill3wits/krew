@@ -1,0 +1,48 @@
+# why: A plugin can mark specific READ-ONLY calls of its own tools parallel-safe (a predicate on the call's arguments), so a tool whose reads and writes share one name admits its reads only. Inert until a plugin registers; HERMES_PLUGIN_PARALLEL_SAFE=0 switches it off.
+# tests: 
+# upstream: candidate
+# base: hermes-agent 35272ce28b29 (v0.21.4+canary.20260928T071354Z-19-g35272ce28b)
+
+diff --git a/agent/tool_dispatch_helpers.py b/agent/tool_dispatch_helpers.py
+--- a/agent/tool_dispatch_helpers.py
++++ b/agent/tool_dispatch_helpers.py
+@@ -165,6 +165,30 @@
+         return tool_name, function_args
+ 
+ 
++# krew patch 200: a plugin may mark specific READ-ONLY calls of its own tools parallel-safe. The predicate sees the
++# call's arguments, so a tool whose reads and writes share one name (an ``action`` argument) can admit its reads only.
++# Nothing is admitted unless a plugin registers; a predicate that raises or returns falsy keeps the call a sequential
++# barrier, exactly as before. Kill: HERMES_PLUGIN_PARALLEL_SAFE=0.
++_PLUGIN_PARALLEL_SAFE: dict = {}
++
++
++def register_plugin_parallel_safe(tool_name: str, predicate) -> None:
++    """Admit ``tool_name`` calls for which ``predicate(args: dict) -> bool`` is true to a parallel batch."""
++    _PLUGIN_PARALLEL_SAFE[str(tool_name)] = predicate
++
++
++def _plugin_parallel_safe(tool_name: str, function_args: dict) -> bool:
++    if os.environ.get("HERMES_PLUGIN_PARALLEL_SAFE", "1").strip().lower() in ("0", "false", "no", "off"):
++        return False
++    pred = _PLUGIN_PARALLEL_SAFE.get(tool_name)
++    if pred is None:
++        return False
++    try:
++        return bool(pred(dict(function_args)))
++    except Exception:  # noqa: BLE001 - a broken predicate is a barrier, never a crash
++        return False
++
++
+ def _batch_admission(tool_call, execution_cwd: Optional[Path]) -> tuple[str, List[Path], bool] | None:
+     """Classify one call for the planner: ``None`` = sequential barrier, else
+     ``(effective_name, scoped_paths, is_writer)`` (empty paths = unscoped parallel-safe)."""
+@@ -192,6 +216,8 @@
+         return (name, scoped, name in _PATH_SCOPED_WRITERS) if scoped else None
+     if name in _PARALLEL_SAFE_TOOLS or name in _PARALLEL_SAFE_BRIDGE_LOOKUPS or _is_mcp_tool_parallel_safe(name):
+         return name, [], False
++    if _plugin_parallel_safe(name, args):
++        return name, [], False
+     return None
+ 
+ 

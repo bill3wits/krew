@@ -1,0 +1,109 @@
+{
+  "repo": "https://github.com/NousResearch/hermes-agent.git",
+  "commit": "35272ce28b29bae90e9ecceff9def17ae791c012",
+  "describe": "v0.21.4+canary.20260928T071354Z-19-g35272ce28b",
+  "version": "0.21.4",
+  "python": ">=3.14",
+  "patches": [
+    {
+      "file": "110-kanban-test-isolation.patch",
+      "sha256": "1d259d16a821a390ef33dce8bcf4e113afd8a511847ebd877bff53de2d9af6ed",
+      "tests": [
+        "tests/hermes_cli/test_kanban_sqlite_guard.py",
+        "tests/hermes_cli/test_kanban_per_profile_cap.py",
+        "tests/hermes_cli/test_kanban_cli_dispatch_passthrough.py"
+      ]
+    },
+    {
+      "file": "120-subdirectory-hints-switch.patch",
+      "sha256": "e4423d37a579f7266a3f83d833a898f8499d9c9d87b1374c6f7f9ce56f5760bb",
+      "tests": []
+    },
+    {
+      "file": "130-tool-search-eager-list.patch",
+      "sha256": "18533d13966ac65ab314c39c1b406a45f288094c2b20eae64c2afac534f0acb4",
+      "tests": []
+    },
+    {
+      "file": "140-cron-worker-bootstrap.patch",
+      "sha256": "9aaf2473ad7991c8a0eb78af18db2b087de3ec2435fb77335ce3c379a39c5bc8",
+      "tests": []
+    },
+    {
+      "file": "150-npm-vuln-clear.patch",
+      "sha256": "11d8d017369b60dce4ced62134ffed9a3b54612a01ffd84185557556536e1bfe",
+      "tests": []
+    },
+    {
+      "file": "160-toolset-cache-custom-names.patch",
+      "sha256": "0a165f4c6856fa9173ce46386b531dde0f3727b598da4e4349d7fedb0627be79",
+      "tests": [
+        "tests/hermes_cli/test_plugin_toolset_cache_custom_names.py::test_custom_toolset_name_reaches_cache"
+      ]
+    },
+    {
+      "file": "161-test-plugin-toolset-cache-custom-names.patch",
+      "sha256": "ed0c72cbd6ca7567497e8cb23e6ecb1af0d52980f7506970b9cbea79ea4bf699",
+      "tests": [
+        "tests/hermes_cli/test_plugin_toolset_cache_custom_names.py::test_custom_toolset_name_reaches_cache"
+      ]
+    },
+    {
+      "file": "170-kanban-dashboard-board-fallback.patch",
+      "sha256": "c18547877695e27c4314737bd60d513da78b9f92d7cccee517c544b37b69b772",
+      "tests": []
+    },
+    {
+      "file": "180-brace-expansion-5012.patch",
+      "sha256": "d7d2ee3f8490e35c81c0563300e524a9aa7375931f35683fbcbbfb7c195ed27e",
+      "tests": []
+    },
+    {
+      "file": "190-undici-6290.patch",
+      "sha256": "7afa3f66433f17439dd9eb5fb99d540624397ad1e03d82cf1ef873a9dd6c9937",
+      "tests": []
+    },
+    {
+      "file": "20-kanban-protocol-violation-limit.patch",
+      "sha256": "b449304048e3d55bb1a4de69298affb355c956b8b19e1c174e2db337fe0ac8f6",
+      "tests": []
+    },
+    {
+      "file": "200-plugin-parallel-safe.patch",
+      "sha256": "3710b7575be3f196b3f4f4add46285d49b2d4360f7ab9a170dd4baacbd3ef45b",
+      "tests": []
+    },
+    {
+      "file": "210-bot-desktop-private-runtime.patch",
+      "sha256": "6eb79a3f07b46ab65bd165514747845d8a3927be3a511ea156c4f111782a69a5",
+      "tests": [
+        "tests/tools/test_bot_desktop_launcher_seed.py",
+        "tests/tools/test_bot_desktop_launcher_xvnc.py",
+        "tests/tools/test_bot_desktop_runtime.py"
+      ]
+    },
+    {
+      "file": "220-searxng-query-guard.patch",
+      "sha256": "8a9bfe5c0253ee1ceb7696ba911d37aec2f22dab99e3d1ebd0400d9b2b767730",
+      "tests": [
+        "tests/plugins/web/test_searxng_guard.py",
+        "tests/plugins/web/test_web_search_provider_plugins.py"
+      ]
+    },
+    {
+      "file": "50-kanban-lean-spawn.patch",
+      "sha256": "9c4932a29dddd9f3544aa65b0cdd8428aa59df26670d5f70c95bfae0a6e37cd4",
+      "tests": []
+    },
+    {
+      "file": "70-kanban-sticky-park-cap-ceiling.patch",
+      "sha256": "4daa7fb3b5f07338ce815d756c37351e2ed43179245c22d6b7313bead3820817",
+      "tests": []
+    },
+    {
+      "file": "75-kanban-decompose-depth.patch",
+      "sha256": "d66e998d0e5d575d1ac76d5b66c2f9c59342dc278844b6e4f5ede10616004c6f",
+      "tests": []
+    }
+  ]
+}

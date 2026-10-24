@@ -1,0 +1,356 @@
+{
+ "_doc": "M&S env roots: what each env exists to run (lib/env_roots.py reads it; report only). Copy to $KREW_HOME/ms-env-roots.json (krew-install.py seeds this empty one) or point ms.yaml roots_file at yours. envs: {name: {label, units, files (the app's requirement files), app (its dists), entries (scripts / package dirs its units run, import-scanned), entries_wide, entry_point_groups, file_roots, data_wheels, clis, conda, orphan_remove}}. defaults apply to every env. Empty envs = every env reports 'no roots declared'. The reference install's rows are machine data (its paths and units) and are not shipped; `_reference_install` lists only its env names and the row keys it uses.",
+ "defaults": {
+  "entry_point_groups": {
+   "vllm.general_plugins": "vllm",
+   "vllm.platform_plugins": "vllm"
+  },
+  "data_wheels": [
+   {
+    "dist": "flashinfer-cubin",
+    "for": "flashinfer-python"
+   },
+   {
+    "dist": "flashinfer-jit-cache",
+    "for": "flashinfer-python"
+   }
+  ]
+ },
+ "envs": {},
+ "_reference_install": {
+  "_doc": "The machine krew was built on: its roots rows verbatim (regenerated 2026-10-10 from its config/ms-env-roots.json), with ${MS_ENVS_ROOT} / {data} / ~/projects placeholders and its own unit prefix written ref-. Copy a row into `envs` when that env exists on your machine.",
+  "envs": {
+   "comfyui": {
+    "label": "ComfyUI :8188 (Render)",
+    "units": [
+     "start-comfyui.sh via ref-mode render"
+    ],
+    "files": [
+     "{data}/comfy/requirements.txt",
+     "{data}/comfy/custom_nodes/ComfyUI-GGUF/requirements.txt",
+     "{data}/comfy/custom_nodes/ComfyUI-LTXVideo/requirements.txt"
+    ],
+    "entries": [
+     "{data}/comfy/main.py",
+     "{data}/comfy/nodes.py",
+     "{data}/comfy/comfy_extras",
+     "{data}/comfy/comfy_api_nodes",
+     "{data}/comfy/custom_nodes/ComfyUI-GGUF",
+     "{data}/comfy/custom_nodes/ComfyUI-LTXVideo"
+    ],
+    "rebuild": {
+     "_doc": "Stage D (lib/env_rebuild.py): built beside the old env from these roots, checked off-GPU, re-rendered in a Render window, flipped by symlink.",
+     "app_dir": "{data}/comfy",
+     "extra_index_urls": [
+      "https://download.pytorch.org/whl/cu130"
+     ],
+     "exclude": [
+      "comfy-cli",
+      "matrix-nio",
+      "pygithub",
+      "comfyui-manager"
+     ],
+     "custom_nodes": [
+      "ComfyUI-GGUF",
+      "ComfyUI-LTXVideo",
+      "websocket_image_save.py"
+     ],
+     "workflows_dir": "{data}/comfy/workflows",
+     "skip_workflows": [
+      "apple_split_i2v.json"
+     ],
+     "serve_args": [],
+     "retire_paths": [
+      "{data}/comfy/custom_nodes/ComfyUI-Manager"
+     ],
+     "keep_days": 14,
+     "_serve_note": "serve_args [] = how ordinary Render runs Comfy BESIDE crew + Cosy (~43 GiB free): --highvram cannot fit there (5 of 14 ran out of memory on 09-29). High-VRAM is WANTED (the owner 09-29: 'we DO want high vram. That is the whole point'); it belongs to the heavy-render mode, which takes crew off the card first.",
+     "health_url": "http://127.0.0.1:8188/system_stats"
+    }
+   },
+   "hindsight": {
+    "label": "hindsight memory :8888",
+    "units": [
+     "hindsight.service (system)"
+    ],
+    "files": [
+     "${MS_ENVS_ROOT}/hindsight/pyproject.toml"
+    ],
+    "app": [
+     "hindsight-api"
+    ],
+    "entries": []
+   },
+   "audio8-tts": {
+    "label": "audio8 TTS :8024 (onnx)",
+    "units": [
+     "audio8-tts.service"
+    ],
+    "files": [
+     "{data}/services/audio8-tts/onnx_runtime/requirements.txt"
+    ],
+    "app": [
+     "uvicorn"
+    ],
+    "entries": [
+     "{data}/services/audio8-tts/onnx_runtime/arktts_runtime"
+    ]
+   },
+   "rail-stt": {
+    "label": "the ear (rail-stt :8190) + enroll + ws-shadow",
+    "units": [
+     "rail-stt.service",
+     "enroll-panel.service",
+     "ws-shadow.service"
+    ],
+    "files": [
+     "~/projects/rail-stt/requirements.txt"
+    ],
+    "entries": [
+     "~/projects/rail-stt/rail_stt",
+     "~/projects/ref-id/tools",
+     "@repo/scripts/ws-shadow-server.py",
+     "@repo/scripts/zoey-tts-live-mic-enroll.py",
+     "{data}/models/ark-asr-0.6b-int8-onnx",
+     "@repo/lib/vo_sound.py",
+     "@repo/lib/ref_announce.py"
+    ],
+    "file_roots": [
+     {
+      "by": "rail-stt.service LD_LIBRARY_PATH (faster-whisper / ctranslate2 load cuBLAS, cuDNN, NVRTC by path)",
+      "match": "nvidia-(cublas|cudnn|cuda-nvrtc)-cu12"
+     }
+    ]
+   },
+   "vllm": {
+    "label": "the reference interpreter (wall, conductors, presence, doctors; named vllm, runs no vLLM server)",
+    "units": [
+     "ref-conductor",
+     "ref-conductor-bench",
+     "ref-lila-conductor",
+     "ref-wall-ascii",
+     "ref-wall",
+     "ref-clip-doctor",
+     "ref-lila-takes",
+     "ref-lila-doctor",
+     "ref-pose-map",
+     "door-stamp",
+     "clip-reel",
+     "ref-render-collect",
+     "ref-hold-sweep (pose-freelance)",
+     "rail-presence",
+     "rail-camera",
+     "static-faces-rebuild (timer paused 10-01)",
+     "nightly-tests (the M&S trail itself)"
+    ],
+    "files": [
+     "~/projects/rail-presence/pyproject.toml"
+    ],
+    "app": [],
+    "entries": [
+     "@repo/scripts/ref-conductor.py",
+     "@repo/scripts/ref-wall-ascii",
+     "@repo/scripts/ref-wall",
+     "@repo/scripts/clip-doctor-shell.py",
+     "@repo/scripts/pose-map-build.py",
+     "@repo/scripts/door_stamp_server.py",
+     "@repo/scripts/clip-reel.py",
+     "@repo/scripts/render-collect.py",
+     "@repo/scripts/pose-freelance.py",
+     "@repo/scripts/ref-speak.py",
+     "@repo/scripts/ms-trail-run.py",
+     "~/projects/rail-presence/src/rail_presence",
+     "{data}/presence/presence.py"
+    ],
+    "entries_wide": [
+     "@repo/scripts",
+     "@repo/lib",
+     "shebang:@repo/scripts",
+     "~/projects/rail-presence/src/rail_presence",
+     "{data}/presence"
+    ],
+    "scan_note": "narrow = the units' entry scripts and what they import; wide = every app script and lib module, the conservative bound (scripts spawned with sys.executable)",
+    "clis": [
+     {
+      "dist": "piper-tts",
+      "by": "lib/zoeyos_tts.py (piper on PATH)"
+     }
+    ]
+   },
+   "vllm-0271-cu132": {
+    "label": "crew / Beast vLLM 0.27.1 (vllm-ref-env.sh); ops left for vllm-030-cu132 on 09-30",
+    "units": [
+     "crew.service (start-beast)"
+    ],
+    "app": [
+     "vllm"
+    ],
+    "entries": [
+     "@repo/scripts/vllm_alive.py"
+    ],
+    "rebuild": {
+     "_doc": "Stage D for the vLLM lanes is NOT complete (09-30): the plan step still names vllm with no version and carries the old nvidia-cutlass-dsl as a constraint, so it cannot select a new engine. What is here is what the 09-30 hand build of vllm-030-cu132 needed and a rebuild must not forget.",
+     "extra_index_urls": [
+      "https://download.pytorch.org/whl/cu132"
+     ],
+     "patches": [
+      {
+       "file": "torchaudio/_extension/utils.py",
+       "from": "@repo/config/env-patches/vllm-cu132/torchaudio-2.11.0-extension-utils.py",
+       "sha256_stock": "f197807cbfc59a2226f771b298b63c3680b019ab4c9b8fd60d9b372ac91f413b",
+       "sha256_patched": "c6776b6c9b3d8a51ea84fe8ddcdd11358377e391cd965ff3e9965f195d62f92d",
+       "why": "torchaudio 2.11.0 is a cu130 build (no +cu132 wheel exists) and refuses to import beside torch 2.13.0+cu132; transformers imports it (loss_rnnt), so vllm cannot start. _check_cuda_version returns None on its first line. Drop this entry when a +cu132 torchaudio is installed."
+      }
+     ],
+     "first_start": {
+      "_doc": "The owner 09-30: a new env's first start happens outside the lane. ops's own model from the new env in a transient unit; FlashInfer builds its NVFP4 kernels once here (fp4_gemm_cutlass_sm120), bounded by MAX_JOBS - unbounded it took 76 GB on 32 cores. ops is held + stopped for those minutes and started again by the unit's stop hook.",
+      "lane_unit": "ops.service",
+      "script": "@repo/scripts/start-ops.sh",
+      "env": {
+       "KREW_VLLM_ENV": "{new_dir}",
+       "OPS_VLLM_PREFIX": "{version_mm}",
+       "MAX_JOBS": "4",
+       "REF_TRAIN_HOLD": "/dev/null",
+       "OPS_KV_BYTES": "15032385536"
+      },
+      "ready_url": "http://127.0.0.1:8000/v1/models",
+      "ready_timeout_s": 1500,
+      "settle_s": 20,
+      "runtime_max_s": 2400,
+      "memory_max": "48G",
+      "memory_swap_max": "2G"
+     }
+    }
+   },
+   "chatterbox-turbo": {
+    "label": "the voice :7789 (turbo-voice.service, Chatterbox Turbo; replaced Cosy 2026-10-06)",
+    "units": [
+     "turbo-voice.service"
+    ],
+    "app": [
+     "chatterbox-tts"
+    ],
+    "entries": [
+     "@repo/scripts/ref-turbo-tts.py"
+    ]
+   },
+   "audio8-asr": {
+    "label": "ARK ASR (audio8-asr :8096, live-ear) - its own env since cosy-retire 2026-10-07 (was the cosyvoice env)",
+    "units": [
+     "audio8-asr.service",
+     "live-ear.service"
+    ],
+    "entries": [
+     "{data}/audio8-asr/audio8_asr_server.py",
+     "{data}/models/ark-asr-0.6b-int8-onnx"
+    ]
+   },
+   "mfa": {
+    "label": "rail-align (Montreal Forced Aligner, conda)",
+    "units": [
+     "rail-align.service"
+    ],
+    "app": [
+     "montreal-forced-aligner"
+    ],
+    "entries": [
+     "@repo/scripts/rail-align.py",
+     "@repo/lib/align_mfa.py"
+    ],
+    "conda": true,
+    "orphan_remove": false
+   },
+   "mediapipe": {
+    "label": "face engine (pose intake, MediaPipe)",
+    "units": [
+     "pose_intake.face_python() launches"
+    ],
+    "app": [
+     "mediapipe"
+    ],
+    "entries": [
+     "@repo/scripts/pose-head-frame.py",
+     "@repo/scripts/pose-loop-playlist.py"
+    ]
+   },
+   "unsloth": {
+    "label": "training (stt-embed-lora), no unit",
+    "units": [],
+    "app": [
+     "unsloth",
+     "unsloth-zoo"
+    ],
+    "entries": [
+     "@repo/train/stt-embed-lora/scripts"
+    ]
+   },
+   "unsloth-train": {
+    "label": "training (canary), no unit",
+    "units": [],
+    "app": [
+     "trl",
+     "peft",
+     "transformers"
+    ],
+    "entries": [
+     "@repo/train/canary"
+    ]
+   },
+   "wespeaker": {
+    "label": "voice A/B (wespeaker), no unit",
+    "units": [],
+    "app": [
+     "wespeakerruntime"
+    ],
+    "entries": [
+     "@repo/scripts/voice-ab.py"
+    ]
+   },
+   "vllm-030-cu132": {
+    "label": "ops vLLM 0.30.0 (ops.service.d/engine-030.conf -> vllm-ref-env.sh)",
+    "units": [
+     "ops.service"
+    ],
+    "app": [
+     "vllm"
+    ],
+    "entries": [
+     "@repo/scripts/vllm_alive.py"
+    ],
+    "rebuild": {
+     "_doc": "Stage D for the vLLM lanes is NOT complete (09-30): the plan step still names vllm with no version and carries the old nvidia-cutlass-dsl as a constraint, so it cannot select a new engine. What is here is what the 09-30 hand build of vllm-030-cu132 needed and a rebuild must not forget.",
+     "extra_index_urls": [
+      "https://download.pytorch.org/whl/cu132"
+     ],
+     "patches": [
+      {
+       "file": "torchaudio/_extension/utils.py",
+       "from": "@repo/config/env-patches/vllm-cu132/torchaudio-2.11.0-extension-utils.py",
+       "sha256_stock": "f197807cbfc59a2226f771b298b63c3680b019ab4c9b8fd60d9b372ac91f413b",
+       "sha256_patched": "c6776b6c9b3d8a51ea84fe8ddcdd11358377e391cd965ff3e9965f195d62f92d",
+       "why": "torchaudio 2.11.0 is a cu130 build (no +cu132 wheel exists) and refuses to import beside torch 2.13.0+cu132; transformers imports it (loss_rnnt), so vllm cannot start. _check_cuda_version returns None on its first line. Drop this entry when a +cu132 torchaudio is installed."
+      }
+     ],
+     "first_start": {
+      "_doc": "The owner 09-30: a new env's first start happens outside the lane. ops's own model from the new env in a transient unit; FlashInfer builds its NVFP4 kernels once here (fp4_gemm_cutlass_sm120), bounded by MAX_JOBS - unbounded it took 76 GB on 32 cores. ops is held + stopped for those minutes and started again by the unit's stop hook.",
+      "lane_unit": "ops.service",
+      "script": "@repo/scripts/start-ops.sh",
+      "env": {
+       "KREW_VLLM_ENV": "{new_dir}",
+       "OPS_VLLM_PREFIX": "{version_mm}",
+       "MAX_JOBS": "4",
+       "REF_TRAIN_HOLD": "/dev/null",
+       "OPS_KV_BYTES": "15032385536"
+      },
+      "ready_url": "http://127.0.0.1:8000/v1/models",
+      "ready_timeout_s": 1500,
+      "settle_s": 20,
+      "runtime_max_s": 2400,
+      "memory_max": "48G",
+      "memory_swap_max": "2G"
+     }
+    }
+   }
+  }
+ }
+}

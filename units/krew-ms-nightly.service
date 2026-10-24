@@ -1,0 +1,11 @@
+[Unit]
+Description=M&S nightly: map + report + decisions ledger (report only until upgrades: true in {krew_home}/ms.yaml)
+
+[Service]
+Type=oneshot
+Nice=10
+Environment=KREW_HOME={krew_home}
+# M&S roots Stage A, report only (the reference install's ms-roots.conf drop-in). MS_ROOTS=off turns it off.
+Environment=MS_ROOTS=report
+EnvironmentFile=-{krew_home}/krew-day.env
+ExecStart={python} {krew}/ms/scripts/krew-ms.py --nightly

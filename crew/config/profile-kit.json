@@ -1,0 +1,795 @@
+{
+  "_doc": "Which crew pre_tool_call hooks, krew plugins, crew skills and hermes cron jobs each profile runs: the reference install's placement, read by crew/scripts/krew-crew-install.py (--profiles writes the hooks block into each profile's config.yaml and copies each profile's skills; plugins are enabled by krew-install init; --crons creates the cron jobs). A hook with `path` runs that file under $KREW_HOME directly (the T0 gate: never behind a runner or an off switch); one with `script` runs crew/scripts/<script> through krew-crew-run. `fail_closed: true` is carried into the hook spec (a crashed or timed-out gate refuses the call; hermes shell hooks fail OPEN otherwise). Edit $KREW_HOME/crew/config/profile-kit.json to change it.",
+  "profiles": {
+    "_doc": "Each crew profile's config as the reference install runs it (2026-10-10): the Board class description (= profile.yaml description, what Ada's decomposer routes by; the SOUL carries the same class line), toolsets (cli adds `docs`; cron and api_server = toolsets), agent caps, delegation, memory, tool_search (eager/defer), terminal. krew_install_init.profile_config writes them into a fresh profile's config.yaml and profile.yaml; nothing you already have is overwritten. {{deliverables_dir}} / {{hermes_home}} / {{live_tree}} are filled from krew.yaml (deliverables_dir, live_tree) or dropped.",
+    "ada": {
+      "display_name": "Ada",
+      "description": "Board orchestrator and sole kanban inbox. Decomposes, assigns, heartbeats; does not implement on the host. Risky or untrusted work: spin consultants in docker. Goal-mode is judged by Ada's crew goal_judge, not Vera.",
+      "toolsets": [
+        "kanban",
+        "clarify",
+        "file",
+        "memory",
+        "session_search",
+        "team",
+        "todo",
+        "skills",
+        "delegation",
+        "cronjob"
+      ],
+      "agent": {
+        "max_turns": 60,
+        "reasoning_effort": "high",
+        "verify_on_stop": false
+      },
+      "delegation": {
+        "max_concurrent_children": 2,
+        "max_spawn_depth": 2,
+        "orchestrator_enabled": true
+      },
+      "memory_enabled": true,
+      "tool_search": {
+        "defer": [
+          "annotate_preview",
+          "apply_layout",
+          "clarify",
+          "close_terminal",
+          "computer_use",
+          "cronjob_manage",
+          "desktop_preview",
+          "desktop_project",
+          "drive_preview",
+          "focus_pane",
+          "gui_tour",
+          "image_generate",
+          "memory",
+          "process_manage",
+          "read_terminal",
+          "read_window_below",
+          "show_tip",
+          "skill_manage",
+          "todo_list"
+        ],
+        "eager": [
+          "team_board",
+          "krew_docs"
+        ]
+      },
+      "terminal": {
+        "backend": "docker",
+        "timeout": 600,
+        "docker_image": "nikolaik/python-nodejs:python3.11-nodejs20",
+        "docker_forward_env": [],
+        "container_memory": 8192,
+        "docker_volumes": [
+          "{{hermes_home}}/profiles-ro:/hermes/profiles:ro",
+          "{{live_tree}}:/repo:ro",
+          "{{deliverables_dir}}:/deliverables"
+        ],
+        "docker_mount_cwd_to_workspace": false,
+        "docker_network": true,
+        "docker_run_as_host_user": true
+      }
+    },
+    "vera": {
+      "display_name": "Vera",
+      "description": "Board reviewer, and the ONLY reviewer: every kanban_request_review comes to her on the same card; she approves it or sends it back with kanban_request_changes. Prodgate approve/reject, crystal and M&S verification, taste and architecture review; a render is judged with look_compare against its target. Builders build — do not send Vera the implement. Not the Goal-mode judge (Ada's crew goal_judge). Spawn-only.",
+      "toolsets": [
+        "clarify",
+        "file",
+        "terminal",
+        "kanban_lean",
+        "web",
+        "search",
+        "vision",
+        "video",
+        "memory",
+        "team",
+        "todo",
+        "skills",
+        "delegation"
+      ],
+      "agent": {
+        "max_turns": 40,
+        "reasoning_effort": "high",
+        "verify_on_stop": true
+      },
+      "delegation": {
+        "max_spawn_depth": 2,
+        "max_concurrent_children": 2,
+        "orchestrator_enabled": true
+      },
+      "memory_enabled": true,
+      "tool_search": {
+        "eager": [
+          "krew_docs"
+        ],
+        "defer": [
+          "annotate_preview",
+          "apply_layout",
+          "clarify",
+          "close_terminal",
+          "computer_use",
+          "cronjob_manage",
+          "desktop_preview",
+          "desktop_project",
+          "drive_preview",
+          "focus_pane",
+          "gui_tour",
+          "image_generate",
+          "memory",
+          "process_manage",
+          "read_terminal",
+          "read_window_below",
+          "session_search",
+          "show_tip",
+          "skill_manage",
+          "todo_list",
+          "vision_analyze",
+          "web_search"
+        ]
+      },
+      "terminal": {
+        "backend": "local",
+        "timeout": 600
+      }
+    },
+    "lila": {
+      "display_name": "Lila",
+      "description": "Designer and researcher, and the crew's only browser. Commissioned research and look-into cards, web and doc reading, specs and design.md, clip review and render minting through her tools (image_generate, video_generate, krew-render, render-lane), judged against the target with look_compare; glyph and delight research. No terminal: never a host implement, unit, or dependency card, and never a render job that needs a shell (ffmpeg, compositing, stitching, frame pinning, render-submit or pose scripts) — those are Bash's. Ada pins assignee=lila. Spawn-only — in-run adversarial subs, not Vera board review, not Goal.",
+      "toolsets": [
+        "clarify",
+        "file",
+        "browser",
+        "web",
+        "vision",
+        "video",
+        "memory",
+        "team",
+        "skills",
+        "kanban_lean",
+        "delegation",
+        "image_gen",
+        "video_gen"
+      ],
+      "agent": {
+        "max_turns": 45,
+        "reasoning_effort": "high",
+        "verify_on_stop": false
+      },
+      "delegation": {
+        "max_spawn_depth": 2,
+        "max_concurrent_children": 2,
+        "orchestrator_enabled": true
+      },
+      "memory_enabled": true,
+      "tool_search": {
+        "eager": [
+          "krew_docs"
+        ],
+        "defer": [
+          "annotate_preview",
+          "apply_layout",
+          "browser_exec",
+          "browser_vault_enter_code",
+          "browser_vault_fill",
+          "browser_vault_list",
+          "browser_vault_save_login",
+          "browser_vault_unlock",
+          "clarify",
+          "close_terminal",
+          "computer_use",
+          "cronjob_manage",
+          "desktop_preview",
+          "desktop_project",
+          "drive_preview",
+          "focus_pane",
+          "gui_tour",
+          "image_generate",
+          "memory",
+          "process_manage",
+          "read_terminal",
+          "read_window_below",
+          "session_search",
+          "show_tip",
+          "skill_manage",
+          "todo_list"
+        ]
+      },
+      "terminal": {
+        "backend": "local"
+      }
+    },
+    "steward": {
+      "display_name": "Steward",
+      "description": "System architect of record, plus M&S and host security. Reads scout world/stack notes as data; bounded throwaway spikes only — never swap prod engines. Files the owner's reports in the deliverables folder ({{deliverables_dir}}) and archives by filename date into reports/ and kanban-archive/. Logs → kanban with resolution in that inbox. Coder 2 + default assignee: bounce undecomposed Ready one-liners to triage. Host terminal. Equal peer of Bash for dep, mitigation, and builds.",
+      "toolsets": [
+        "clarify",
+        "file",
+        "terminal",
+        "code_execution",
+        "memory",
+        "team",
+        "skills",
+        "kanban_lean",
+        "delegation",
+        "cronjob",
+        "search"
+      ],
+      "agent": {
+        "max_turns": 80,
+        "reasoning_effort": "low",
+        "verify_on_stop": true
+      },
+      "delegation": {
+        "max_spawn_depth": 2,
+        "max_concurrent_children": 4,
+        "orchestrator_enabled": true
+      },
+      "memory_enabled": true,
+      "tool_search": {
+        "defer": [
+          "annotate_preview",
+          "apply_layout",
+          "clarify",
+          "close_terminal",
+          "computer_use",
+          "cronjob_manage",
+          "desktop_preview",
+          "desktop_project",
+          "drive_preview",
+          "focus_pane",
+          "gui_tour",
+          "image_generate",
+          "memory",
+          "process_manage",
+          "read_terminal",
+          "read_window_below",
+          "session_search",
+          "show_tip",
+          "skill_manage",
+          "todo_list"
+        ],
+        "eager": [
+          "team_time",
+          "krew_docs"
+        ]
+      },
+      "terminal": {
+        "backend": "local",
+        "timeout": 600
+      }
+    },
+    "bash": {
+      "display_name": "Bash",
+      "description": "Coder 1 — host-terminal implement, dep-review, mitigation, and builds, and every render job that needs a shell: ffmpeg compositing and stitching, frame pinning, render-submit and pose scripts, judged against the target with look_compare. Equal peer of Steward: split batches; never dump a whole batch on one coder. Adversarial-gate on non-trivial work. Not a dispatcher.",
+      "toolsets": [
+        "clarify",
+        "file",
+        "terminal",
+        "code_execution",
+        "memory",
+        "team",
+        "skills",
+        "kanban_lean",
+        "delegation",
+        "web",
+        "search",
+        "vision",
+        "video",
+        "image_gen",
+        "video_gen"
+      ],
+      "agent": {
+        "max_turns": 80,
+        "reasoning_effort": "high",
+        "verify_on_stop": true
+      },
+      "delegation": {
+        "max_concurrent_children": 20,
+        "max_spawn_depth": 2,
+        "orchestrator_enabled": true
+      },
+      "memory_enabled": true,
+      "tool_search": {
+        "eager": [
+          "krew_docs"
+        ],
+        "defer": [
+          "annotate_preview",
+          "apply_layout",
+          "clarify",
+          "close_terminal",
+          "computer_use",
+          "cronjob_manage",
+          "desktop_preview",
+          "desktop_project",
+          "drive_preview",
+          "focus_pane",
+          "gui_tour",
+          "image_generate",
+          "memory",
+          "read_terminal",
+          "read_window_below",
+          "session_search",
+          "show_tip",
+          "skill_manage",
+          "todo_list",
+          "vision_analyze"
+        ]
+      },
+      "terminal": {
+        "backend": "local",
+        "timeout": 600
+      }
+    },
+    "scout": {
+      "display_name": "Scout",
+      "description": "Local-AI world and stack SOTA notes. Search + web + file into the owner inbox only. No host shell, no sudo, no kanban, no spikes. Steward is the architect of record and reads these notes as data.",
+      "toolsets": [
+        "file",
+        "web",
+        "search",
+        "skills",
+        "memory",
+        "session_search"
+      ],
+      "agent": {
+        "max_turns": 80,
+        "reasoning_effort": "medium",
+        "verify_on_stop": true
+      },
+      "memory_enabled": true,
+      "tool_search": {
+        "enabled": false
+      }
+    },
+    "judge": {
+      "display_name": "Judge",
+      "description": "Judge — one call, one verb. Reads a card a detector already diagnosed (a worker that did the work and forgot the verb, an ownerless block) and answers with ONE `VERB:` line on the source card, then completes its own card. Never assign work here: only kanban-loop and the board gate file judge cards. No implement, no review, no research, no terminal.",
+      "toolsets": [
+        "kanban_lean",
+        "file",
+        "skills"
+      ],
+      "agent": {
+        "max_turns": 8,
+        "reasoning_effort": "low",
+        "verify_on_stop": false
+      },
+      "delegation": {
+        "max_spawn_depth": 0,
+        "max_concurrent_children": 0,
+        "orchestrator_enabled": false
+      },
+      "memory_enabled": false,
+      "tool_search": {
+        "eager": [
+          "krew_docs"
+        ]
+      },
+      "terminal": {
+        "backend": "local",
+        "timeout": 600
+      }
+    },
+    "zoey": {
+      "display_name": "Crissa",
+      "description": "Spoken assistant and Chief of Staff: front door, the Wall, and the owner's voice. Presence SoT only from the Wall's presence rail — never invent headcount. Rules the Decide queue, spot-checks the crew's deliverables and the improvement round, and reports her calls to the owner. Creates cards for Ada; not a card assignee — never route implement, research, or render work here.",
+      "toolsets": [
+        "hands",
+        "skill_read",
+        "zoeyos"
+      ],
+      "agent": {
+        "max_turns": 60,
+        "disabled_toolsets": [
+          "terminal",
+          "code_execution",
+          "desktop_ui",
+          "project"
+        ]
+      },
+      "memory_enabled": true,
+      "_doc": "the front door: see docs/ZOEY-KIT.md; her toolsets are the hands belt, the full kit rides the hands child"
+    }
+  },
+  "hooks": {
+    "review-route": {
+      "script": "krew-review-route.py",
+      "matcher": "^kanban_request_review$",
+      "timeout": 5,
+      "profiles": [
+        "ada",
+        "bash",
+        "judge",
+        "lila",
+        "steward",
+        "vera",
+        "zoey"
+      ]
+    },
+    "tier0": {
+      "path": "rails/tier0_gate.py",
+      "matcher": "terminal|execute_code|write_file|patch",
+      "matcher_extra": {
+        "zoey": "browser",
+        "lila": "browser_navigate",
+        "default": "computer_use"
+      },
+      "timeout": 10,
+      "fail_closed": true,
+      "profiles": [
+        "ada",
+        "bash",
+        "judge",
+        "lila",
+        "scout",
+        "steward",
+        "vera",
+        "zoey"
+      ],
+      "_doc": "The T0 gate (rails/tier0_gate.py, policy $KREW_HOME/tier0.yaml), the same spec rails/krew_hooks.py writes; profile-kit lists it so the kit is one list. Zoey's rules in the policy (route zoey-kit): no terminal / execute_code / process, write_file / patch judged by a path BLOCK list; KREW_T0_MODE=enforce on the gateway."
+    },
+    "zoey-tool-callout": {
+      "script": "zoey-tool-callout.py",
+      "matcher": "kanban_",
+      "timeout": 3,
+      "profiles": [
+        "ada",
+        "bash",
+        "judge",
+        "lila",
+        "steward",
+        "vera",
+        "zoey"
+      ],
+      "_doc": "One short spoken line when a profile starts a tool (through the Wall's player /v1/announce; silent with no Wall or voice.json voice: off). The reference's matcher: `kanban_` on every crew profile, the long one on zoey (matcher_by_profile).",
+      "matcher_by_profile": {
+        "zoey": "kanban_|team_board|team_presence|team_ear|team_look|web_|search_web|vision|video_analyze|memory|hindsight|read_file|search_files|^hands$"
+      }
+    },
+    "tool-count": {
+      "script": "krew-tool-count.py",
+      "matcher": null,
+      "timeout": 5,
+      "profiles": [
+        "ada",
+        "bash",
+        "lila",
+        "steward",
+        "vera",
+        "zoey"
+      ]
+    },
+    "close-clean": {
+      "script": "krew-close-clean.py",
+      "matcher": "^kanban_complete$",
+      "timeout": 10,
+      "profiles": [
+        "ada",
+        "bash",
+        "judge",
+        "lila",
+        "scout",
+        "steward",
+        "vera"
+      ]
+    },
+    "test-sandbox": {
+      "path": "rails/krew_test_sandbox.py",
+      "matcher": "^terminal$",
+      "timeout": 5,
+      "profiles": [
+        "bash",
+        "steward",
+        "vera"
+      ],
+      "_doc": "A pytest from a worker shell runs in its own HOME (the reference's test sandbox hook on the two coders and the reviewer); rails/krew_hooks.py writes the same spec."
+    },
+    "_order": [
+      "close-clean",
+      "review-route",
+      "tier0",
+      "test-sandbox",
+      "zoey-tool-callout",
+      "tool-count"
+    ],
+    "_doc": "The reference order of a profile's pre_tool_call list is `_order` (close-clean first, the T0 gate before the sandbox, the callout, the count last)."
+  },
+  "plugins": {
+    "krew-kitting": [
+      "ada",
+      "bash",
+      "judge",
+      "lila",
+      "scout",
+      "steward",
+      "vera",
+      "zoey"
+    ],
+    "krew-skill-preload": [
+      "zoey"
+    ],
+    "team-zoey": [
+      "main",
+      "ada",
+      "bash",
+      "lila",
+      "steward",
+      "vera",
+      "zoey"
+    ],
+    "krew-board": [
+      "main",
+      "ada",
+      "bash",
+      "lila",
+      "steward",
+      "vera",
+      "zoey"
+    ],
+    "krew-comfy": [
+      "bash",
+      "lila"
+    ],
+    "krew-vlm": [
+      "bash",
+      "lila",
+      "vera"
+    ],
+    "krew-render": [
+      "bash",
+      "lila",
+      "vera"
+    ],
+    "krew-hands": [
+      "zoey"
+    ],
+    "krew-panel": [
+      "ada",
+      "bash",
+      "lila",
+      "steward",
+      "vera",
+      "zoey"
+    ],
+    "krew-oracle": [
+      "zoey"
+    ],
+    "krew-tts": [
+      "zoey",
+      "ada",
+      "bash",
+      "lila",
+      "steward",
+      "vera"
+    ],
+    "krew-docs": [
+      "ada",
+      "bash",
+      "judge",
+      "lila",
+      "scout",
+      "steward",
+      "vera"
+    ],
+    "hindsight": [
+      "main",
+      "ada",
+      "bash",
+      "lila",
+      "steward",
+      "vera",
+      "zoey"
+    ],
+    "_doc": "hindsight is the catalog plugin (vectorize-io/hindsight, pinned in crew/hindsight/plugin-pin.json; krew-install --memory installs it); the rest ship in plugins/.",
+    "krew-kanban-lean": [
+      "bash",
+      "judge",
+      "lila",
+      "steward",
+      "vera"
+    ]
+  },
+  "skills": {
+    "_doc": "Which crew skills each profile carries (the reference install's placement). krew-crew-install.py --profiles copies each into $HERMES_HOME/profiles/<profile>/skills/krew/<skill>; krew-kitting allows a krew skill on the profile that has it. Zoey carries seventeen (the reference install's profile skills folder, 2026-10-09). 2026-10-10: the seven crew profiles' rows are the reference profiles' skills folders; studio-only skills (mouth-place-and-shape, pose-flourish, viseme-bank-map, composer-coach, demo-rounds, hub-intake) stay with the studio.",
+    "ada-map": [
+      "ada"
+    ],
+    "ada-ops-efficiency": [
+      "ada"
+    ],
+    "ada-orchestrate": [
+      "ada"
+    ],
+    "krew-deliverable": [
+      "ada",
+      "bash",
+      "lila",
+      "steward",
+      "vera",
+      "zoey"
+    ],
+    "krew-judge": [
+      "ada",
+      "judge"
+    ],
+    "ops-toks": [
+      "bash"
+    ],
+    "kanban-terminal-watchdog": [
+      "bash"
+    ],
+    "steward-sweep": [
+      "steward"
+    ],
+    "scout-architect-stack": [
+      "scout"
+    ],
+    "scout-architect-world": [
+      "scout"
+    ],
+    "scout-map": [
+      "scout"
+    ],
+    "scout-one-off": [
+      "scout"
+    ],
+    "scout-team-research": [
+      "scout"
+    ],
+    "scout-team-sources": [
+      "scout"
+    ],
+    "steward-logs": [
+      "steward"
+    ],
+    "steward-map": [
+      "steward"
+    ],
+    "steward-spike": [
+      "steward"
+    ],
+    "team-eval": [
+      "ada",
+      "bash",
+      "lila",
+      "steward",
+      "vera"
+    ],
+    "zoey-big-push": [
+      "zoey"
+    ],
+    "zoey-spotcheck": [
+      "zoey"
+    ],
+    "krew-bring-to-life": [
+      "bash",
+      "lila",
+      "vera"
+    ],
+    "krew-render": [
+      "bash",
+      "lila",
+      "vera"
+    ],
+    "krew-vlm": [
+      "bash",
+      "lila",
+      "vera"
+    ],
+    "render-avatars": [
+      "bash",
+      "lila",
+      "vera"
+    ],
+    "wan-local": [
+      "bash",
+      "lila",
+      "vera"
+    ],
+    "render-lane": [
+      "ada",
+      "bash",
+      "lila",
+      "vera"
+    ],
+    "zoey-render-cycle": [
+      "zoey"
+    ],
+    "krew-panel": [
+      "ada",
+      "bash",
+      "lila",
+      "steward",
+      "vera",
+      "zoey"
+    ],
+    "krew-reframe": [
+      "bash",
+      "zoey"
+    ],
+    "zoey-auth": [
+      "zoey"
+    ],
+    "zoey-cua": [
+      "zoey"
+    ],
+    "zoey-list": [
+      "ada",
+      "zoey"
+    ],
+    "zoey-look": [
+      "zoey"
+    ],
+    "zoey-map": [
+      "zoey"
+    ],
+    "zoey-marketing": [
+      "zoey"
+    ],
+    "zoey-morning": [
+      "zoey"
+    ],
+    "zoey-needs": [
+      "zoey"
+    ],
+    "zoey-report": [
+      "zoey"
+    ],
+    "zoey-surface-art": [
+      "lila",
+      "zoey"
+    ],
+    "zoey-wall": [
+      "zoey"
+    ],
+    "vera-map": [
+      "vera"
+    ],
+    "lila-map": [
+      "lila"
+    ],
+    "bash-map": [
+      "bash",
+      "steward"
+    ],
+    "glyph-density": [
+      "lila"
+    ],
+    "lila-glyph-catalog": [
+      "lila"
+    ],
+    "picture-to-glyph": [
+      "lila"
+    ],
+    "text-to-ascii": [
+      "lila"
+    ],
+    "xspaces-live": [
+      "bash"
+    ]
+  },
+  "crons": {
+    "_doc": "hermes cron jobs that are a profile's own (a real schedule, not the window's placeholder): krew-crew-install.py --crons creates one that is missing (hermes -p <profile> cron create <schedule> <prompt> --name <name> --monitor-script <script>), copies the monitor script into $HERMES_HOME/profiles/<profile>/scripts/, and pins the prompt from the script's CRON_PROMPT (its install_cron_prompt) so the two never drift.",
+    "needs-zoey-watch": {
+      "profile": "zoey",
+      "schedule": "every 10m",
+      "monitor_script": "zoey-needs-watch.py",
+      "prompt_from": "zoey-needs-watch.py",
+      "deliver": "local",
+      "reasoning_effort": "high",
+      "_doc": "Zoey's Decide watch: the monitor prints presence + the open escalation cards (stable bytes; beat= re-wakes her hourly while a software-rulable card waits); she rules every card, oldest first."
+    },
+    "kanban-heartbeat": {
+      "profile": "ada",
+      "schedule": "every 60m",
+      "prompt": "Check the kanban board and post a concise status update: any new blockers or decisions since the last beat. Keep it to ONE card. Do NOT record ephemeral data (tool raw output) to memory.",
+      "deliver": "origin",
+      "_doc": "Ada's hourly board beat (the reference's kanban-heartbeat cron). The other crew crons carry the placeholder schedule and are fired by the window (crew-crons.json).",
+      "paused": true,
+      "_paused_why": "Created paused on a fresh install: an hourly card is a card generator. hermes -p ada cron resume kanban-heartbeat starts it (README, Card generators)."
+    }
+  }
+}

@@ -1,0 +1,302 @@
+#!/bin/bash
+# steward-sweep — file an hourly board-stewardship card for the steward.
+# Injects a board snapshot + ACTIVE DIAGNOSTICS (stranded-ready, stuck-blocked,
+# cycling, repeated failures) so the sweep needs no discovery tools.
+# Run by steward-sweep.timer (Persistent=true: missed sweeps fire after boot).
+# History: was an agent-crontab one-liner; promoted to a versioned script
+# 2026-06-11 for durability. Encoding note: iconv -c before cut — cut can
+# slice multibyte glyphs and poison the card body with invalid UTF-8.
+# 2026-06-11b: snapshot now also carries RECENTLY COMPLETED (done) cards.
+# 2026-06-17: archive the previous steward sweep card via CLI before create.
+# 2026-06-26: THREAD-CHURN GUARD — escalate instead of filing the next round.
+# 2026-08-16 (User): escalate to Zoey (needs-zoey @zoey), not the User. She tells
+# User out loud. No telegram, no needs-human, no notify/reassign clones.
+# 2026-09-17: NO GPU gate. The 09-13 crew-installed /usr/local/bin/sweep_gate
+# (card t_2626f7b3) wanted mode normal AND >= 8192 MiB free; Standard idles at
+# ~7.1 GiB free with both brains resident, so it let through 5 of 54 attempts
+# (all while ops was parked) and the board had no steward for the whole jam.
+# The sweep files one card; its worker runs on crew, which is already resident.
+# Do not re-add a VRAM floor here (see also REVIEW-20260915: never a safe gate).
+set -uo pipefail
+# Runtime paths are env-overridable (STWARD_LOCK / STWARD_HERMES test seams):
+# the e2e marker test runs the real sweep unstubbed-except-kanban and must
+# not touch the live lock, the live hermes binary, or the live runtime tree.
+H="${STWARD_HERMES:-$(command -v hermes || echo "$HOME/.local/bin/hermes")}"
+LOCK="${STWARD_LOCK:-$HOME/.hermes/architect.lock}"
+
+# (0) RAM-PRESSURE GUARD (2026-09-21, t_fbedcef1 + t_801d7b01 — OOM_Scheduling
+# diagnosis t_5b190d15; 09-22 retargeted to the working set, t_7f7a906f).
+# The sweep's WORKER runs inside the hermes-ada-gateway kanban swarm, whose
+# UNIT cgroup (hermes-ada-gateway.service) carries the surviving hard cap
+# MemoryMax=24G (drop-in memcap.conf). The 09-21 17:45Z kill was oomd-side on
+# memory.current — which COUNTS RECLAIMABLE PAGE CACHE (measured that night:
+# anon 658 MB / file 12.9 GB). The kernel reclaimed continuously to stay
+# under the cap and ManagedOOMMemoryPressure fired on that pressure; the
+# ceiling manufactured the kill from cache. MemoryHigh was REMOVED 09-22
+# (commit 6559bb01) — memory.high now reads 'max', and a guard reading
+# memory.current vs memory.high was both inert AND measuring cache, not
+# working set. The gate is now on the unit's anon (memory.stat 'anon') vs
+# its memory.max — the same metric the kernel's per-cgroup OOM counts,
+# minus the reclaimable file cache.
+# never VRAM: the workers are Python/CLI and a VRAM floor is unreachable in
+# Standard (CLAUDE.md; test_sweep_has_no_gpu_gate pins that).
+# NOT the whole user slice vs host RAM (the 09-21 shipped draft did that;
+# the slice idles at 79-84% of host RAM because the resident 27B models, ops
+# and crew share the slice — a 50% whole-slice gate tripped every hour and
+# starved the board, Vera FAIL t_7144a697).
+# At/above the threshold (default 80% of the unit's memory.max — 19.2 GB of
+# the 24 GB hard cap; the boundary moved from 16 GB of the removed 20G
+# MemoryHigh — see the guard's header) the run skips with a warning carrying
+# the measured GB/% and exits 0 — no marker is stamped, the timer is
+# Persistent, so the next hourly tick retries. The guard script FAILS OPEN on
+# any probe failure (absent script, unreadable cgroup, non-numeric memory.max
+# — 'max' —, missing anon line): a broken gate must never starve the board
+# of a steward — the 09-13 sweep_gate failure.
+#
+# RUNS BEFORE ANY BOARD STATE IS WRITTEN. All sweep-markers (roll, archive,
+# classify, file-card) are stamped below; a pressure skip exits 0 here without
+# stamping anything, so a skipped hour leaves NO trace and the next refire
+# re-attempts the full run — it must be invisible (the 09-13 class: a skip
+# that half-stamps state poisons the next sweep). Guard path resolution: SWEEP_RAM_GUARD_PATH env (test/emergency seam)
+# -> the INSTALLED copy in /usr/local/bin (checked FIRST: the timer runs the
+# installed sweep, and the installed sweep must use the installed guard, never
+# a stale repo tree — that was the reject reason) -> self-dir sibling (a sweep
+# copied elsewhere still finds its sibling guard) -> repo copy. The first
+# existing executable wins.
+# Env seams: SWEEP_RAM_GUARD=0 (disable), SWEEP_RAM_MAX_PCT=N (threshold,
+# default 80), SWEEP_RAM_PROBE_DIR=D (probe seam, forwarded to the guard).
+RAM_GUARD_PATH="${SWEEP_RAM_GUARD_PATH:-}"
+if [ -z "$RAM_GUARD_PATH" ]; then
+    _selfdir="$(cd "$(dirname "$(readlink -f "$0")")" 2>/dev/null && pwd)"
+    for _g in "/usr/local/bin/sweep-ram-guard" \
+              "${_selfdir%/}/sweep-ram-guard" \
+              "${KREW_CREW_ROOT:-$HOME/.krew/crew}/scripts/sweep-ram-guard"; do
+        [ -x "$_g" ] && { RAM_GUARD_PATH="$_g"; break; }
+    done
+fi
+if [ "${SWEEP_RAM_GUARD:-1}" = 0 ]; then
+    echo "steward-sweep: sweep-ram-guard disabled by SWEEP_RAM_GUARD=0" >&2
+elif [ -n "$RAM_GUARD_PATH" ] && [ -x "$RAM_GUARD_PATH" ]; then
+    # Capture the guard's own stderr so the rc-3 skip line below can carry
+    # the guard's MEASURED number (GiB + % of memory.high), not just the
+    # threshold — a skip logged with only the threshold is useless for
+    # post-mortems.
+    _GUARD_ERR="$(mktemp /tmp/sweep-ram-guard.XXXXXX 2>/dev/null)" || _GUARD_ERR=""
+    # The seam env vars are passed on the same invocation line as the
+    # guard call: SWEEP_RAM_MAX_PCT (threshold, default 80) and
+    # SWEEP_RAM_PROBE_DIR (probe seam).
+    SWEEP_RAM_MAX_PCT="${SWEEP_RAM_MAX_PCT:-80}" \
+    SWEEP_RAM_PROBE_DIR="${SWEEP_RAM_PROBE_DIR:-}" \
+    "$RAM_GUARD_PATH" --max-pct "${SWEEP_RAM_MAX_PCT:-80}" 2>"$_GUARD_ERR"
+    _g_rc=$?
+    case $_g_rc in
+        0) : ;;
+        3) echo "steward-sweep: $(tail -n 1 "$_GUARD_ERR" 2>/dev/null | tr '\n' ' ')" >&2
+           echo "steward-sweep skip: the dispatcher gateway's working set (anon) at/above ${SWEEP_RAM_MAX_PCT:-80}% of its memory.max (measured: see guard line above; page cache is NOT counted — it made the 09-21 MemoryHigh fatal); no marker stamped, timer refires next hour" >&2
+           rm -f "$_GUARD_ERR"
+           exit 0 ;;
+        *) echo "steward-sweep: $RAM_GUARD_PATH rc=$_g_rc (not a pressure skip) — failing open" >&2 ;;
+    esac
+    rm -f "$_GUARD_ERR"
+else
+    echo "steward-sweep: sweep-ram-guard not found (tried \$SWEEP_RAM_GUARD_PATH, self-dir, /usr/local/bin, repo) — failing open" >&2
+fi
+
+mkdir -p "$(dirname "$LOCK")"
+exec 9>"$LOCK"
+if ! flock -w 120 9; then
+    echo "steward-sweep skip: architect lock busy" >&2
+    exit 0
+fi
+
+# ONE STANDING BOARD (the User 2026-09-17): nothing rolls daily any more — kanban-day-close
+# archives closed work when the User's off-hours open. History of why:
+# 2026-09-17: the roll rode inside this script, so a sweep that did not run meant
+# no roll (the board was still daily-2026-09-16 at 09:00 on 09-17) and a sweep
+# that did run rolled at whatever hour it got through — the carry copies every
+# open card WITHOUT its parent links and readies the todos, which on a jammed
+# board dumps the whole tangle onto a new one (30 of 33 carried cards respawned on
+# 09-16). KREW_SWEEP_ROLLS_BOARD=1 puts the old roll-in-the-sweep back.
+
+# IDMPOTENT COMPLETION MARKER (2026-09-21, t_6c42bc2a). The sweep runs as a
+# systemd oneshot; if the harness kills it mid-run (the "pid not alive" failure
+# class from t_11b5c766), a bare re-run re-files the card and re-archives. Each
+# phase below stamps a marker file atomically (tmp + fsync + os.replace) into
+# the RUNTIME state dir (never the repo tree) as soon as it finishes; on re-
+# run, a phase whose marker carries "done" is skipped. Marker dir is per board
+# so a board roll never confuses two runs.
+#
+#   $HOME/.hermes/kanban/boards/$HERMES_KANBAN_BOARD/sweep-markers/
+#     roll.done              (only when the roll itself ran)
+#     archive-<PREV_ID>.done (per archived sweep card)
+#     classify.done          (after classification, BEFORE the card is filed)
+#     file-card.done
+#
+# A kill -9 between phases leaves the finished phases' markers on disk — the
+# next run picks up where this one died. Marker files hold the phase label
+# plus "done"; nothing else reads them.
+# THE BOARD IS THE ONE kanban/current NAMES (2026-10-13): the timer's unit never sets HERMES_KANBAN_BOARD, and the
+# old fallback was the literal name "current" - boards/current, which is not a board (on one machine an empty file
+# from an old roll, so every stamp failed "Not a directory"; elsewhere a stray directory beside the real board).
+# Hermes's own pointer is ~/.hermes/kanban/current; a slug with a slash or nothing at all gives "default".
+SWEEP_BOARD="${HERMES_KANBAN_BOARD:-}"
+if [ -z "$SWEEP_BOARD" ] && [ -f "$HOME/.hermes/kanban/current" ]; then
+    SWEEP_BOARD=$(head -c 200 "$HOME/.hermes/kanban/current" 2>/dev/null | tr -d '[:space:]')
+fi
+case "$SWEEP_BOARD" in ""|*/*|.|..) SWEEP_BOARD=default ;; esac
+MARKER_DIR="$HOME/.hermes/kanban/boards/$SWEEP_BOARD/sweep-markers"
+mkdir -p "$MARKER_DIR" 2>/dev/null || true
+
+# Helper: skip a phase if its marker is already "done"
+sweep_phase_done() {
+    [ -f "$MARKER_DIR/$1.done" ]
+}
+
+# Helper: stamp a phase as done — atomic (tmp + fsync + os.replace). The final
+# rename is a single syscall, so the marker appears fully written or not at all.
+sweep_phase_stamp() {
+    local phase="$1" name
+    case "$phase" in
+        roll)          name="roll" ;;
+        classify)      name="classify" ;;
+        file-card)     name="file-card" ;;
+        archive:*)     name="archive-${phase#archive:}" ;;
+        *)             return 0 ;;
+    esac
+    SWEEP_MARKERS="$MARKER_DIR" MARKER_NAME="$name.done" python3 - <<'PYEOF'
+import os
+mdir  = os.environ["SWEEP_MARKERS"]
+name  = os.environ["MARKER_NAME"]
+target = os.path.join(mdir, name)
+if os.path.exists(target):
+    raise SystemExit(0)
+tmp = target + ".tmp"
+label = name[:-5] if name.endswith(".done") else name
+try:
+    with open(tmp, "w") as f:
+        f.write(label + " done\n")
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, target)
+except OSError as e:
+    import sys
+    print("sweep-markers: stamp %s failed: %s" % (name, e), file=sys.stderr)
+    try:
+        os.unlink(tmp)
+    except OSError:
+        pass
+PYEOF
+}
+
+if [ "${KREW_SWEEP_ROLLS_BOARD:-0}" = 1 ] && [ -x /usr/local/bin/krew-board-roll ]; then
+  if sweep_phase_done roll; then
+    echo "sweep-markers: roll already done, skipping"
+  else
+    /usr/local/bin/krew-board-roll >> "$HOME/.hermes/logs/krew-board-roll.log" 2>&1 || true
+    sweep_phase_stamp roll
+  fi
+fi
+clean() {   # coach, don't cap: a block that is cut says so, and where the rest is
+    local s; s=$(tr '\n' ';' | iconv -c -f utf-8 -t ascii//TRANSLIT)
+    if [ "${#s}" -gt "$1" ]; then printf '%s [cut at %s of %s chars; %s has the rest]' "${s:0:$1}" "$1" "${#s}" "${2:-the board}"
+    else printf '%s' "$s"; fi
+}
+
+PREV_SWEEP_ID=$($H kanban list 2>/dev/null | grep 'steward sweep:' | head -1 | awk '{print $2}')
+if [ -n "$PREV_SWEEP_ID" ]; then
+    if sweep_phase_done "archive:$PREV_SWEEP_ID"; then
+        echo "sweep-markers: archive of $PREV_SWEEP_ID already done, skipping"
+    else
+        $H kanban archive "$PREV_SWEEP_ID" >/dev/null 2>&1
+        sweep_phase_stamp "archive:$PREV_SWEEP_ID"
+    fi
+fi
+
+SNAPSHOT=$($H kanban list 2>/dev/null | grep -vE '✓|archived' | clean 20000 kanban_list)
+COMPLETED=$($H kanban list --status done --sort updated 2>/dev/null | tail -20 | clean 6000 'kanban_list --status done')
+DIAG=$($H kanban diagnostics 2>/dev/null | clean 8000 'hermes kanban diagnostics')
+# BLOCKING PARKS (2026-09-21). Every diagnostic above reads a card's OWN state, so a
+# card waiting on a parked prerequisite is invisible to all of them — and this sweep is
+# told to act on cards with "NO native path forward", which that card technically has.
+# The 09-16 board sat five days that way: 15 todo cards, ZERO dispatchable, nothing
+# broken. This is the edge: which parks are load-bearing, and which are roots the ruler
+# can actually act on. Kill KREW_BLAST_RADIUS=0.
+BLAST=$(timeout 150 python3 "${KREW_CREW_ROOT:-$HOME/.krew/crew}/scripts/kanban-blast-radius.py" 2>/dev/null | clean 8000 kanban-blast-radius.py)
+
+# Rank the column by what each park actually HOLDS (2026-09-22). --set-priority has existed
+# since 09-21, guarded and tested, and nothing in the tree ever passed it — so the leverage
+# order was computed every hour, printed, and thrown away. It writes `blocks` into `priority`,
+# which hermes ALREADY sorts by (`status='ready' AND claim_lock IS NULL ORDER BY priority
+# DESC`), so no new sort exists anywhere and nothing changes while the card is parked; when a
+# park is released it is claimed early, which is the whole point. 23 parks on the 09-16 board.
+#
+# A SEPARATE invocation on purpose: folding it into the line above would put a write inside
+# the 150 s report timeout, and a slow write would cost us the BLAST text the sweep reasons
+# from. This one is allowed to fail alone. Kill KREW_BLAST_PRIORITY=0.
+timeout 90 python3 "${KREW_CREW_ROOT:-$HOME/.krew/crew}/scripts/kanban-blast-radius.py" \
+  --set-priority >/dev/null 2>&1 || true
+
+PROMPT_BUDGET=""; TOOL_REQS=""
+[ -n "${KREW_PROMPT_BUDGET_FILE:-}" ] && PROMPT_BUDGET=$(clean 4000 "$KREW_PROMPT_BUDGET_FILE" < "$KREW_PROMPT_BUDGET_FILE" 2>/dev/null)
+[ -n "${KREW_TOOL_REQS_FILE:-}" ] && TOOL_REQS=$(clean 4000 "$KREW_TOOL_REQS_FILE" < "$KREW_TOOL_REQS_FILE" 2>/dev/null)
+
+# Classification step COMPLETE here (board read: SNAPSHOT, COMPLETED, DIAG,
+# BLAST, budget, tool-reqs). Stamp classify.done NOW — before the action — so a
+# kill -9 between classification and action still leaves the classification
+# marker on disk. Re-run: the card's --idempotency-key and file-card.done guard
+# the action, so skipping classification on re-run is safe and saves the slow
+# blast-radius pass.
+sweep_phase_stamp classify
+
+BODY="Board stewardship sweep per your SOUL and skill steward-sweep. FLOW WITH HERMES — NATIVE-FIRST: the dispatcher already retries, circuit-breaks, and recovers crashed / rate-limited / swap-parked (brain-down) workers on its own, and goal_mode cards self-judge — do NOT reimplement crash/stuck-worker recovery or re-spawn what the dispatcher will. Your job is the ADDITIVE layer the dispatcher does NOT do: proactive archiving of resolved/stale cards, detecting orphaned review-waiters, escalating genuine human-only blockers, and within-protocol mitigation. A gave_up breaker park (block_kind usually NULL — the breaker never writes a kind) is sticky: dispatcher will NOT retry. Class is last event gave_up, not kind-none (untyped worker blocks are also NULL). Do NOT unblock (re-burns salad). If salad-cold and no frame:/reframe-cut yet, comment a mechanical frame: from last_failure_error so kanban-loop cuts a reframe; if ~/.hermes/kanban-loop.off, say so on this card and leave them. Leave only in-flight dispatcher retries (still running/ready) alone. Act on cards stuck with NO native path forward. GROUND RULE: the OPEN CARDS snapshot below is exhaustive (when it says it is cut, kanban_list has the rest) — a card not listed there does NOT exist and must never be assumed to exist (verify with kanban_list if in doubt). A card blocked 'waiting for review/critique' with no matching card in OPEN CARDS is ORPHANED, not healthy — check RECENTLY COMPLETED: if the review already finished, unblock the waiter; if no review card was ever filed, file the missing critique/review card yourself (assignee vera, linked to the waiter). SCOPE: (1) classify and clear blocked cards; (2) act on the ACTIVE DIAGNOSTICS below — stranded-ready cards on REAL profiles (ada/bash/steward/lila/vera/zoey) may be reassigned once to a real profile; never reassign to a name that has no Hermes profile, and do NOT file Reassign/Notify clones to one (one needs-zoey for the thread instead); stuck/cycling cards (classify, escalate after 3 strikes — EXCEPT cards marked UNCAPPED-ITERATE by User in body or comments: those iterate until their reviewer passes them, leave them cycling; escalate UNCAPPED-ITERATE cards only on infra failures or zero progress between rounds), repeated failures (stop retry burn); (2b) THREAD-CHURN GUARD — the 3-strike rule counts strikes PER CARD, but a single trivial change can evade it by churning as a CHAIN of fresh cards/gates (each rejection spawns a NEW card, resetting the count). So ALSO scan across cards for one underlying change cycling: same target file, same prodgate gate-id, a parent/child lineage, or repeated near-identical titles. If ONE logical change has consumed 3+ cards / gates / review rounds without LANDING, STOP — do NOT file the next fix, re-review, reassign, or notify card (that is the trap, not the fix). Escalate to Zoey instead: create ONE card title 'needs-zoey: <thread>', assignee zoey, --initial-status blocked (needs_input — never ready; Ada must not spawn Zoey as a worker), one-paragraph summary + ids + root-cause hypothesis. Do NOT file needs-<person> cards. Do NOT assign a person. Zoey tells User out loud. A blocked needs-zoey waiting for User is healthy — leave it. Canonical example: a 5-char morning_report.py fix that spawned a 115-line 'prodgate edit' meta-tool across many cards/sweeps before anyone noticed the deadlock it 'fixed' did not exist. UNCAPPED-ITERATE threads are exempt from the count but still escalate on zero progress between rounds; (3) close NEEDS-ZOEY / leftover needs-<person> escalation cards whose subject task is already done — VERIFY the work is actually done (cite the on-disk/board evidence), then ARCHIVE the card with 'hermes kanban archive <id>' via CLI. Do NOT use kanban_complete on these: an unclaimed escalation CANNOT be completed (it errors 'unknown id or already terminal') and will linger looking undone — ARCHIVE is the only way to clear it; (4) MITIGATE blockers WITHIN protocol — when a card is stuck on a blocker you may: (a) file a descoped mitigation card that delivers partial value around the blocker (e.g. 'plan only — no execution: produce the full implementation plan as the deliverable'), linked to the stuck card and citing the blocker; (b) file a tooling-fix card when failures trace to a broken/missing skill or procedure (e.g. 'request formal tool with correct procedure for X'), assigned to bash, so the fix outlives the stuck card; (c) when ONLY human input can unblock, create ONE needs-zoey card assignee=zoey. Do not telegram. Do not notify/reassign clones; (5) DONE CARDS ARE NOT YOURS TO ARCHIVE — kanban-day-close archives closed done cards every night when the user's off-hours open, and it knows which done cards an open frame or a superseded source still has to read as done. Leave done cards alone; archive only escalation cards per (3)."
+
+BODY="${BODY}
+
+=== OPEN CARDS (exhaustive) ===
+${SNAPSHOT:-none}
+
+=== RECENTLY COMPLETED ===
+${COMPLETED:-none}
+
+=== ACTIVE DIAGNOSTICS ===
+${DIAG:-none}
+
+=== BLOCKING PARKS (what each park is holding) ===
+${BLAST:-none}
+
+=== PROMPT BUDGET (silent tax — tools/schemas per turn) ===
+${PROMPT_BUDGET:-unavailable}
+
+=== OPEN TOOL/SKILL EDIT REQS (individual, no community vote) ===
+${TOOL_REQS:-(none)}
+
+SCOPE ADD (6) PROMPT BUDGET: if status WARN, run or request 'fleet-preserve-profile-toolkits' for drift;
+if voice kits over max_tools, escalate needs-zoey @zoey with the PROMPT BUDGET block — do not pad SOUL.
+SCOPE ADD (7) TOOL/SKILL REQS: open individual edit requests are listed above — may file small tooling-fix
+cards (assignee bash or the named profile) without community poll; close via tool-skill-req close <id>.
+SCOPE ADD (9) BLOCKING PARKS: the block above ranks parked/blocked cards by how many LIVE cards
+each one holds. A card marked ROOT has nothing open in its own way — it is the ruler's to decide, and
+clearing it releases everything listed under it. A card marked 'waits' is itself waiting on another
+card: do NOT escalate that one, escalate what it waits on. '0 of N todo cards dispatchable' means the
+board is idle BY DEPENDENCY, not jammed — do not reassign, re-spawn or mitigate those cards, and do
+not read the idleness as stuck workers. Highest-blocking ROOTs are where one ruling pays most; if one
+needs a human word, ONE needs-zoey card for the thread (not per card).
+SCOPE ADD (8) KREW BOARD: there is ONE standing krew board (the fleet's current board; its slug may still carry an old date — that is only a name). It does not roll daily. NEVER run 'hermes kanban boards switch' or krew-board-roll — that strands the krew and respawns parked cards. To peek an old board use: hermes kanban --board <slug> list."
+
+# Skills once per thread (the User 2026-09-18): the sweep card carries its skills as pins so the
+# worker never spends a round on skill_view (steward-sweep was loaded 114x in 206 sessions).
+# `--skill` validates against the CALLING profile's registry, hence `-p steward`
+# (house law: every house kanban call is `hermes -p <profile>`).
+# Idempotency: if file-card.done exists, a prior run already filed this hour's card
+# (the --idempotency-key also guards the kanban layer). We exit 0 without exec'ing.
+if sweep_phase_done file-card; then
+    echo "sweep-markers: file-card already done, skipping (card already filed this hour)"
+    exit 0
+fi
+$H -p steward kanban create "steward sweep: blocked cards + stuck-card diagnostics" \
+  --assignee steward --goal --goal-max-turns 14 \
+  --skill steward-sweep --skill steward-logs --skill steward-map \
+  --created-by steward-cron \
+  --idempotency-key "steward-$(date +%Y%m%d%H)" \
+  --body "$BODY"
+sweep_phase_stamp file-card

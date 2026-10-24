@@ -1,0 +1,126 @@
+# krew Janitor settings: copy to $KREW_HOME/janitor.yaml (krew-install does, if missing).
+# janitor/krew-janitor.py reads every unit, probe, flag and path from here; nothing machine-specific is in code.
+# With this file as shipped the Janitor watches the registry (krew-*, zoey-*, hermes-* units), probes nothing,
+# restarts nothing (report-only), and files its cards as krew-janitor. Uncomment and fill what your machine runs.
+
+paths:
+  metrics_dir: ~/.krew/janitor/metrics       # janitor-YYYYMMDD.jsonl, janitor-state.json, janitor-latest.json
+  disks: [/]                                 # free space sampled each tick, e.g. [/, /data]
+  # {krew} is your krew checkout: krew-install writes its path here when it seeds janitor.yaml.
+  lib_dirs: ['{krew}/window/lib']           # optional helpers: reboot_comment (window/lib); audio_orphans if you have it (the gateway topology is krew's crew/lib, read first)
+  reboot_stamp: '{krew}/window/scripts/krew-reboot-stamp.py'   # consumes a pre-reboot intent stamp (absent = UNKNOWN reboot card)
+  # pin_check: ~/.krew/crew/scripts/krew-pin-check.py    # default: crew/scripts/krew-pin-check.py in this checkout; absent = a warn row naming it missing
+  # id_root: ~/.krew/identity                            # site/init-wizard.json: a running Init owns Render
+  render_jobs: ~/.hermes/render-jobs.json
+
+cards:
+  profile: ada                 # the profile whose board the reboot-card reads go through
+  created_by: krew-janitor     # a machine card is never signed as the owner
+  cooldown_s: 43200            # one card per unit per 12 h
+
+units:
+  watch: []                    # units watched BY STATE (restart candidates), e.g. [my-web.service, system:my-db.service]
+  report_only: []              # GPU tenants: watched, carded, never restarted (e.g. [ops.service, crew.service])
+  observe_only: []             # restarting them steals a lease or kills a window (e.g. [rail-camera.service])
+  retired: []                  # deliberately stopped forever: never restarted, carded or probed
+  retired_probes: []
+  glass_unit: ''               # the display browser unit, patrolled only while glass_mode_file says `brave`
+  glass_mode_file: ~/.hermes/glass-mode
+
+probes:
+  timeout_s: 8
+  ports: {}                    # name: [port, path] (path null = bare TCP), e.g. {ops: [8000, /v1/models]}
+  units: {}                    # probe name: its unit, e.g. {ops: ops.service}
+
+zoeyos:                        # Crissa, live or not: asked every tick (crew/lib/zoeyos_watch.py), only over HTTP
+  player: ''                   # its Wall player; '' = $ZOEYOS_PLAYER, else http://127.0.0.1:8100. GET /v1/state
+                               #   answering = live; then the Crissa side is one more watched row (player + ear)
+  ear: ''                      # a switch: off = do not watch her ear; '' = $ZOEYOS_EAR, else on. Her ear is read
+                               #   through the player (GET /v1/ear?part=stt); a Crissa older than that is a warn
+  units: []                    # Crissa's units among units.watch: while Crissa is not live they are parked
+                               #   "Crissa not installed — watching krew only", never red or carded
+  probes: []                   # the same for probe names in probes.ports
+  unit_patterns: [zoeyos-*]    # registry units that are Crissa's (parked the same way while it is not live)
+restart:
+  armed: false                 # true = a failed unit gets one restart per cooldown; false = it logs would_restart
+  cooldown_s: 1800
+  never: []                    # the wall is the owner's call, e.g. [my-wall.service]
+
+crash_loop:
+  restarts: 2                  # NRestarts climbing this much ...
+  window_s: 300                # ... within this window = a crash loop (card, never a restart)
+  signatures: ["CUDA out of memory", "illegal memory access", "EngineDeadError"]
+
+gpu:                           # a GPU owner (a mode script) parks tenants on purpose: parked = expected-down
+  occupancy_units: []
+  occupancy_probes: []
+  mode_file: ~/.hermes/gpu-mode            # first word: render | normal | beast | heavy-render
+  # mode_bin: ~/.krew/janitor/gpu-mode     # `<mode_bin> normal` brings a leftover Render back
+  pending_file: ~/.hermes/gpu-pending
+  beast_hold: /run/hermes/beast-hold
+  beast_parked_units: []
+  beast_parked_probes: []
+  render_parked_units: []
+  render_parked_probes: []
+  render_sleep_units: []
+
+train:                         # a train window parks the brains on purpose
+  busy_flag: /run/hermes/train-busy
+  busy_max_age_s: 21600
+  parked_units: []
+  parked_probes: []
+  hold_paths: [/tmp/krew-train-hold]
+
+audio:
+  probe: true                  # pipewire client count against its cap
+  reap: false                  # true = orphaned audio clients are reaped (else reported)
+
+logs:
+  roots: [/var/log, ~/.hermes, ~/projects, ~/agents]    # the weekly card names what grew (never deletes)
+
+registry:                      # janitor/krew_registry.py: every unit of ours, discovered from systemd
+  # notes: ~/.krew/unit-notes.json     # words only (label, what, feeds, off_file, expect); never membership.
+                                       #   Shape: config/unit-notes.example.json (krew-install seeds it when missing).
+                                       #   The one services list ($KREW_HOME/services.json) fills units: and probes:
+                                       #   above where they are empty; the file's own values win.
+  # state_dir: ~/.krew/units
+  name_prefixes: [krew-, zoey-, hermes-]
+  exec_markers: [~/.krew, ~/.hermes]   # an ExecStart containing one of these is ours
+  # polkit_file: ~/.krew/polkit/51-krew-os-power.rules
+
+watch:
+  gaps_root: '~'               # where a gap's `grep` done-condition looks
+  render_orders: ~/.krew/render-orders
+
+gate_hold:                     # after a hermes update, a gate whose suite fails is held report-only for 24 h
+  repo: .
+  suites: {}                   # gate: [tests/test_x.py, ...]
+
+crystal:                       # janitor/krew-crystal-check: no kanban complete without a crystal
+  deliverables: ~/Desktop/deliverables
+  decisions: ~/.krew/ms/decisions.json
+  rails_repo: ~/projects/rails
+  delight_dir: display/delight-lab
+
+code_canary:                   # janitor/code_canary.py: did installed Python lose its source? (.py count per tree)
+  mode: report                 # report (an event line, nothing on the board) | act (comment the suspect cards, ask Crissa once) | off; KREW_CODE_CANARY overrides
+  # hermes_dir: ~/.hermes      # its installs/, plugins/, security/ and profiles' uv python are counted
+  # envs_root: /stores/envs    # service envs counted on the janitor's full tick, by name:
+  # service_envs: [vllm, comfyui]
+  # code_trees: {krew/janitor: '{krew}/janitor', krew/rails: '{krew}/rails'}   # default: krew's own janitor/ and rails/
+  # ms_unit: krew-ms-nightly.service   # a drop while it runs is said to be M&S's apply-green (never hidden)
+  # recipe: restore the tree from a known-good copy, or reinstall the environment
+
+# Environment, not settings: set these in a krew-janitor.service / krew-janitor-watch.service drop-in (the janitor's
+# units run from systemd/user, not through krew-crew-run, so crew.yaml's env: does not reach them). Code defaults shown.
+#   KREW_JANITOR_WATCH=1            janitor-watch.py: 0 = the watcher does nothing
+#   KREW_JANITOR_WATCH_ACT=0        1 = a stale tick / dead timer / failed run files one card per episode (else logged)
+#   KREW_JANITOR_STALE_S=900        a janitor tick older than this is stale
+#   KREW_JANITOR_METRICS=           the janitor's metrics folder ("" = $KREW_HOME/janitor/metrics)
+#   KREW_DOOR_VIEW_CHECK=report     door_view_check.py: report | act | off (the door camera's view vs the presence rail)
+#   KREW_DOOR_VIEW_WINDOW_S=1800
+#   KREW_DOOR_VIEW_PICTURE=         an optional picture matcher for the door view ("" = none)
+#   KREW_PRESENCE_UNIT=rail-presence   the presence service's unit (its journal is read for face reads)
+#   KREW_PRESENCE_FACE_TAG=face     the log tag the presence service writes a face read under
+#   KREW_PW_CLIENT_CAP=             PipeWire's client cap for the audio probe ("" = read it from PipeWire)
+#   KREW_JANITOR_AUDIO_REAP=1       the reference install reaps leaked audio subscribers (audio_orphans.py)

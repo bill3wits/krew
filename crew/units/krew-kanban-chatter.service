@@ -1,0 +1,9 @@
+# krew: board events -> the wall's KANBAN log roll (and Zoey's tool roll). Read-mostly; one cursor file.
+[Unit]
+Description=krew kanban chatter (board events to the log roll)
+
+[Service]
+Type=oneshot
+Environment=KREW_T0_MODE=enforce
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run kanban-chatter-atomic.py
+Nice=10

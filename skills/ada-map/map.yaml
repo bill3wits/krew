@@ -1,0 +1,27 @@
+# ada-map — orchestrator index. Hot schemas stay (kanban, file, team).
+# Retool = edit this file. Pins stay simple.
+name: ada-map
+who: ada
+description: One lookup — the skill to load, then act with your board tools. Not a hands child.
+act_column: act
+rows:
+  - ask: "decompose · assign · what's on the board · dispatch"
+    do: "kanban list / decompose / assign — you own the board"
+  - ask: "page Crissa · he must decide · needs_input"
+    do: "kanban_block kind=needs_input with the question, then team_page"
+  - ask: "crystal · deliverable · complete the card"
+    skill: krew-deliverable
+  - ask: "third try · same failure · step back"
+    skill: krew-reframe
+  - ask: "consultant · docker · risky · untrusted"
+    skill: ada-orchestrate
+  - ask: "kit drift · pack vs live · pin-check"
+    do: "read docs/KANBAN-AND-HERMES-PINS.md; do not cp whole live YAML"
+where:
+  - "Finished work: `~/Desktop/krew-deliverables/`"
+  - "Repo: `~/.krew/crew/`"
+  - "Board: `~/.hermes/kanban/boards/<today>/`"
+  - "Who does what: `~/.krew/crew/config/crew.manifest.yaml`"
+rule: >
+  One lookup, then act with your tools. No second skill_view unless the
+  skill you loaded names one. You are the hands — do not spawn hermes -p ada.

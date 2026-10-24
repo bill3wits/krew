@@ -1,0 +1,5 @@
+{
+  "_doc": "close-clean (crew/lib/close_clean.py, hook crew/scripts/krew-close-clean.py). live_repos = the trees a crew worker must not leave dirty when it closes a card (~ = your home); crew_profiles = the profiles whose kanban_complete is checked. Empty live_repos checks nothing (the hook fails open). Mode: ~/.hermes/close-clean.mode = off | report | enforce (KREW_CLOSE_CLEAN overrides). This file: $KREW_HOME/crew/config/close-clean.json, or KREW_CLOSE_CLEAN_CONFIG. ~/.krew/crew.example.yaml shows the reference install's values.",
+  "live_repos": [],
+  "crew_profiles": ["ada", "bash", "judge", "lila", "scout", "steward", "vera"]
+}

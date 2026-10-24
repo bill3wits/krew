@@ -1,0 +1,12 @@
+[Unit]
+Description=krew render window tick every 2 min (off switch: ~/.hermes/render-window.off)
+
+[Timer]
+OnBootSec=4min
+OnUnitActiveSec=2min
+AccuracySec=15s
+# No Persistent=true: on a monotonic-only timer it only keeps a stamp, and after a user-session restart the new
+# manager can read that stamp as 'fired this boot' and never fire again.
+
+[Install]
+WantedBy=timers.target

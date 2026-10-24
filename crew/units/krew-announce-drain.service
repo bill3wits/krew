@@ -1,0 +1,17 @@
+# krew: the PA drain. Long-running: pops the announce queue ($HOME/.hermes/krew-announce-queue.jsonl, written by
+# team-zoey's board hook and the keeper) one line at a time, a roundup when more than 3 wait, and hands each line to
+# the Wall's player (POST $ZOEYOS_PLAYER/v1/announce), which queues it behind her answers and holds it while someone
+# is talking. Mute, quiet hours or a tool hold dump the queue (logged). No player answering: each line is logged
+# failed with "Crissa not installed". The reference install played the line itself on its own audio stack.
+[Unit]
+Description=krew PA announce drain (one line at a time, through the Wall's player)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run krew-announce-drain.py
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target

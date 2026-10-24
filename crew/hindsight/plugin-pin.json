@@ -1,0 +1,14 @@
+{
+  "_doc": "The Hindsight Hermes plugin the reference install runs (hermes plugins install vectorize-io/hindsight; the catalog's own code, no local edits: the installed copy was byte-identical to the catalog tree except its catalog stamp). krew-install.py --memory installs it by this repo slug; this file is the pin a clean install is checked against (version, repo, sha).",
+  "catalog_name": "hindsight",
+  "repo": "https://github.com/vectorize-io/hindsight",
+  "sha": "176f8c2de1369f569c489b831d143b78128b5535",
+  "version": "1.0.1",
+  "tier": "community",
+  "python_requires": ">=3.11",
+  "pip": [
+    "hindsight-client>=0.10.1,<1",
+    "hindsight-embed>=0.10.1,<1"
+  ],
+  "config": "crew/hindsight/config.example.json -> $HERMES_HOME/hindsight/config.json (the only file the plugin reads; auto_recall off)"
+}

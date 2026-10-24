@@ -1,0 +1,7 @@
+[Unit]
+Description=Re-measure Crissa's hands step cap ("step caps re-measure in 3 days") - report only
+
+[Service]
+Type=oneshot
+Environment=KREW_HOME={krew_home}
+ExecStart={python} {krew}/crew/scripts/hands-step-cap.py --days 3 --out {krew_home}/reports/step-cap-remeasure.json

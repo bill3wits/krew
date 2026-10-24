@@ -1,0 +1,7 @@
+[Unit]
+Description=krew-units-refresh: the night's full unit-registry discovery (report only)
+
+[Service]
+Type=oneshot
+Environment=KREW_HOME={krew_home}
+ExecStart={python} {krew}/janitor/krew-units-refresh.py

@@ -1,0 +1,16 @@
+# krew: rewrite the places map and rebuild the docs index's `places` source seconds after a watched folder changes
+# (crew/config/krew-places.json). Off: touch the watch's off_file, or KREW_PLACES=0 in crew.yaml.
+[Unit]
+Description=krew places watch (places map + docs index `places` source, on folder change)
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run krew-places-watch.py run
+Restart=on-failure
+RestartSec=30
+Nice=10
+CPUQuota=200%
+MemoryMax=1G
+
+[Install]
+WantedBy=default.target

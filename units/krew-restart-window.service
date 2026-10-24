@@ -1,0 +1,8 @@
+[Unit]
+Description=krew restart window: one card in off_hours, the front door's ruling carried out and checked (OFF until enabled in {krew_home}/restart-window.json)
+
+[Service]
+Type=oneshot
+Environment=KREW_HOME={krew_home}
+ExecStart={python} {krew}/window/scripts/krew-restart-window.py tick
+TimeoutStartSec=300

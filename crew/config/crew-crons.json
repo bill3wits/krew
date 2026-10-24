@@ -1,0 +1,114 @@
+{
+  "_doc": "The crew's hermes cron jobs, as the reference install runs them. Each has the placeholder schedule '0 0 1 1 *' on purpose: a systemd unit (or the window ticker) fires it with `hermes -p <profile> cron run <name>` under a lock and the GPU-occupancy check (crew/scripts/steward-architect-run.sh, team-eval-run.sh), so the Hermes scheduler never starts one on its own. krew-crew-install.py --crons creates the missing ones (report-first). model/provider: the profile's default unless KREW_CRON_MODEL / KREW_CRON_PROVIDER are set (ref: KREW_CRON_MODEL: crew, KREW_CRON_PROVIDER: custom).",
+  "schedule": "0 0 1 1 *",
+  "jobs": [
+    {
+      "profile": "scout",
+      "name": "architect-world",
+      "skills": [
+        "scout-architect-world"
+      ],
+      "deliver": "local",
+      "prompt": "Load skill scout-architect-world. Write today's world note to ~/Desktop/krew-deliverables/architect-world-YYYY-MM-DD.md from the collect bundle under ~/.krew/memory/ms/architect-collect/ (INDEX.md first, then one section at a time). Honest empty sections are a pass. Do not implement. Do not use a terminal."
+    },
+    {
+      "profile": "scout",
+      "name": "architect-stack",
+      "skills": [
+        "scout-architect-stack"
+      ],
+      "deliver": "local",
+      "prompt": "Load skill scout-architect-stack. Write today's stack note to ~/Desktop/krew-deliverables/architect-stack-YYYY-MM-DD.md. Round-robin 2-3 pieces plus starved pieces (coverage jsonl). Proposed cards as bullets. spike-candidate: none unless one cheap bench is obvious. Do not implement."
+    },
+    {
+      "profile": "scout",
+      "name": "team-research",
+      "skills": [
+        "scout-team-research"
+      ],
+      "deliver": "local",
+      "prompt": "Load skill scout-team-research. WRITE team-research-YYYY-MM-DD.md in the inbox first. Per-role + team-in-general from collect team.md and sources JSON. Thin night is a pass. team-improve bullets for work. Do not invent sources."
+    },
+    {
+      "profile": "scout",
+      "name": "team-sources",
+      "skills": [
+        "scout-team-sources"
+      ],
+      "deliver": "local",
+      "prompt": "Load skill scout-team-sources. WRITE the inbox file first. Hunt new sources. If search is down, use today collect team.md (already resolved). Append proposed[] when possible. Thin honest note is a pass."
+    },
+    {
+      "profile": "steward",
+      "name": "steward-logs",
+      "skills": [
+        "steward-logs"
+      ],
+      "deliver": "local",
+      "prompt": "Load skill steward-logs. Archive already ran. Collect is logs.md in today's collect dir. Write logs-YYYY-MM-DD.md and ms-YYYY-MM-DD.md in ~/Desktop/krew-deliverables and append the living M&S log. File Ada cards for distinct silent anomalies. Do not restart services. Do not browse GitHub."
+    },
+    {
+      "profile": "steward",
+      "name": "steward-spike",
+      "skills": [
+        "steward-spike"
+      ],
+      "deliver": "local",
+      "prompt": "Load skill steward-spike. SPIKE_SLUG is in the environment. Throwaway bench in ~/spikes/ only. Write the spike note in the inbox. Stop if a deny glob or rail fires."
+    },
+    {
+      "profile": "steward",
+      "name": "team-eval",
+      "skills": [
+        "team-eval"
+      ],
+      "deliver": "local",
+      "prompt": "Load skill team-eval. Read ~/Desktop/krew-deliverables/team-research-<today>.md: the NNT picks (Scout's link research) and the team-improve bullets. Score every item 0-3 for YOUR job with one line why and write <profile>-improvement-ideas-<today>.md with a ## Scores section, item text verbatim. Under 200 words. No cards."
+    },
+    {
+      "profile": "ada",
+      "name": "ops-efficiency",
+      "skills": [
+        "ada-ops-efficiency"
+      ],
+      "deliver": "local",
+      "prompt": "Load skill ada-ops-efficiency. Write {{deliverables_dir}}/ops-efficiency-YYYY-MM-DD.md. Read the dated JSON then HTML in {{deliverables_dir}} only. KPI-tied ops-action bullets only. Insufficient history is not stop-tracking."
+    },
+    {
+      "profile": "ada",
+      "name": "team-eval",
+      "skills": [
+        "team-eval"
+      ],
+      "deliver": "local",
+      "prompt": "Load skill team-eval. Read ~/Desktop/krew-deliverables/team-research-<today>.md: the NNT picks (Scout's link research) and the team-improve bullets. Score every item 0-3 for YOUR job with one line why and write <profile>-improvement-ideas-<today>.md with a ## Scores section, item text verbatim. Under 200 words. No cards."
+    },
+    {
+      "profile": "bash",
+      "name": "team-eval",
+      "skills": [
+        "team-eval"
+      ],
+      "deliver": "local",
+      "prompt": "Load skill team-eval. Read ~/Desktop/krew-deliverables/team-research-<today>.md: the NNT picks (Scout's link research) and the team-improve bullets. Score every item 0-3 for YOUR job with one line why and write <profile>-improvement-ideas-<today>.md with a ## Scores section, item text verbatim. Under 200 words. No cards."
+    },
+    {
+      "profile": "lila",
+      "name": "team-eval",
+      "skills": [
+        "team-eval"
+      ],
+      "deliver": "local",
+      "prompt": "Load skill team-eval. Read ~/Desktop/krew-deliverables/team-research-<today>.md: the NNT picks (Scout's link research) and the team-improve bullets. Score every item 0-3 for YOUR job with one line why and write <profile>-improvement-ideas-<today>.md with a ## Scores section, item text verbatim. Under 200 words. No cards."
+    },
+    {
+      "profile": "vera",
+      "name": "team-eval",
+      "skills": [
+        "team-eval"
+      ],
+      "deliver": "local",
+      "prompt": "Load skill team-eval. Read ~/Desktop/krew-deliverables/team-research-<today>.md: the NNT picks (Scout's link research) and the team-improve bullets. Score every item 0-3 for YOUR job with one line why and write <profile>-improvement-ideas-<today>.md with a ## Scores section, item text verbatim. Under 200 words. No cards."
+    }
+  ]
+}

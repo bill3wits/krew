@@ -1,0 +1,64 @@
+# why: npm audit: brace-expansion override 5.0.9 -> 5.0.12 closes 2 HIGH findings in the web workspace (GHSA-q2hr-2g5m-vwhr, GHSA-qhr7-859c-m2p7, GHSA-6j4f-fj2g-mc7p). Stacks on 150.
+# tests: 
+# upstream: dependency bump; drop when the pin carries it
+# base: hermes-agent 35272ce28b29 (v0.21.4+canary.20260928T071354Z-19-g35272ce28b)
+
+diff --git a/package-lock.json b/package-lock.json
+index 2906148aab..74e7bc7d0a 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -7741,7 +7741,6 @@
+       "version": "4.0.4",
+       "resolved": "https://registry.npmjs.org/balanced-match/-/balanced-match-4.0.4.tgz",
+       "integrity": "sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==",
+-      "devOptional": true,
+       "license": "MIT",
+       "engines": {
+         "node": "18 || 20 || >=22"
+@@ -7822,10 +7822,9 @@
+       "optional": true
+     },
+     "node_modules/brace-expansion": {
+-      "version": "5.0.9",
+-      "resolved": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-5.0.9.tgz",
+-      "integrity": "sha512-ScQ4IuvIEF1TMlP7Zt+vjJ//9zlPb2SDcxWxM3bk8s6t6GGdJ7KO1dCcTidOPJKePW30LE/2cT7wCyPho9/Wxg==",
+-      "devOptional": true,
++      "version": "5.0.12",
++      "resolved": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-5.0.12.tgz",
++      "integrity": "sha512-YovQ3rzhaLMIrDjNDMkNS01tea93qhEhG5xy8f6+R0l+dw3Ki+5sCoIoI942iuLZTHWogWktgwVDhU09iNEimQ==",
+       "license": "MIT",
+       "dependencies": {
+         "balanced-match": "^4.0.2"
+@@ -19405,6 +19405,7 @@
+         "@xterm/addon-web-links": "0.12.0",
+         "@xterm/addon-webgl": "0.19.0",
+         "@xterm/xterm": "6.0.0",
++        "brace-expansion": "^5.0.9",
+         "class-variance-authority": "0.7.1",
+         "clsx": "2.1.1",
+         "gsap": "3.15.0",
+diff --git a/package.json b/package.json
+index 2170d11554..2fed3eee63 100644
+--- a/package.json
++++ b/package.json
+@@ -49,7 +49,7 @@
+     "lodash": "4.18.1",
+     "yauzl": "^3.3.1",
+     "protobufjs": "^8.7.1",
+-    "brace-expansion": "5.0.9",
++    "brace-expansion": "5.0.12",
+     "mermaid": "11.16.1",
+     "dompurify": "3.4.13",
+     "ip-address": "10.3.1",
+diff --git a/web/package.json b/web/package.json
+index 50651b247a..0178ac8b6d 100644
+--- a/web/package.json
++++ b/web/package.json
+@@ -25,6 +25,7 @@
+     "@xterm/addon-web-links": "0.12.0",
+     "@xterm/addon-webgl": "0.19.0",
+     "@xterm/xterm": "6.0.0",
++    "brace-expansion": "^5.0.9",
+     "class-variance-authority": "0.7.1",
+     "clsx": "2.1.1",
+     "gsap": "3.15.0",

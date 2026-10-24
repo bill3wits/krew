@@ -1,0 +1,12 @@
+# krew: beam-mic probe every minute (off switch: $KREW_HOME/beam-mic-probe.off, the launcher honours it)
+# krew: opt-in
+[Unit]
+Description=krew beam-mic probe every minute
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=1min
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target

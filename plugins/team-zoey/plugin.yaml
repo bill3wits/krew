@@ -1,0 +1,20 @@
+name: team-zoey
+version: 0.2.2
+description: >
+  TeamZoey krew glue — her voice, the Wall's card, presence peek and ear health, all through
+  the Wall's player (ZOEYOS_PLAYER, default http://127.0.0.1:8100). No player: "Crissa not installed".
+entry: __init__.py
+provides:
+  - toolset: team
+    tools: [team_speak, team_announce, team_presence, team_ear_health,
+            team_wall_photo, team_page, team_observe_presence, team_look,
+            show_me, team_display, team_board, team_list, team_brief_edit, team_morning_brief,
+            team_express, team_compose, team_time, team_config_audit, team_register_face,
+            team_register_voice, team_glyph_art, team_banner, team_scout]
+requires:
+  # Crissa, only through its player (ZOEYOS_PLAYER); a tool whose part is missing says so
+  - player: "Crissa player /v1/state, /v1/speak, /v1/announce, /v1/screen"
+  - ear: "Crissa player /v1/ear"
+  - presence: "Crissa player /v1/rail/presence/ (Crissa's ZOEYOS_PRESENCE_URL)"
+  - camera: "Crissa player /v1/rail/camera/ (Crissa's ZOEYOS_CAMERA_URL)"
+  - registration: "Crissa player /v1/rail/enroll/ (Crissa's ZOEYOS_ENROLL_URL)"

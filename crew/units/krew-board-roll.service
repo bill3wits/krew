@@ -1,0 +1,12 @@
+# krew: opt-in — the board roll. NO TIMER (the User 2026-09-17: "standing board it is"): the board no longer rolls daily,
+# kanban-day-close archives closed work instead. This unit stays for one deliberate migration by hand, and its
+# ExecCondition still refuses a board with open cards (krew-board-roll-ready.py, exit 1 = skipped, not failed: the carry
+# re-mints open cards and 30 of 33 respawned at the last roll). The roll command itself (/usr/local/bin/krew-board-roll,
+# the board carry) is the install's own and is not shipped here.
+[Unit]
+Description=krew-board-roll — make today's dated Daily the fleet's current board, carry open cards
+
+[Service]
+Type=oneshot
+ExecCondition=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run krew-board-roll-ready.py
+ExecStart=/bin/sh -c '/usr/local/bin/krew-board-roll >> %h/.hermes/logs/krew-board-roll.log 2>&1'

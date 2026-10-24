@@ -1,0 +1,11 @@
+# krew: opt-in (off by default)
+[Unit]
+Description=krew wall-tab-probe every 2min (off switch: $KREW_HOME/krew-wall-tab-probe.off)
+
+[Timer]
+OnBootSec=4min
+OnUnitActiveSec=2min
+AccuracySec=15s
+
+[Install]
+WantedBy=timers.target

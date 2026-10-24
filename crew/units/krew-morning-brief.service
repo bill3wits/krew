@@ -1,0 +1,11 @@
+# krew: Zoey's morning brief of the previous day's reports (a closing window job).
+# No timer of its own: the window ticker (krew's off-hours scheduler) starts it as a window job and writes the
+# day it serves to krew-day.env. Run it by hand any time.
+[Unit]
+Description=krew Crissa morning brief of yesterday + inbox INDEX
+
+[Service]
+Type=oneshot
+TimeoutStartSec=10min
+EnvironmentFile=-%h/.krew/krew-day.env
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run krew-morning-brief.sh

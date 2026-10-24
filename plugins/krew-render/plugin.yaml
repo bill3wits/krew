@@ -1,0 +1,15 @@
+name: krew-render
+version: 1.0.0
+description: >
+  render_order: file a ComfyUI render order by recipe id (toolset image_gen), worked by render_runner.py
+  against your ComfyUI server. Render cards: a recipe's licence (commercial or not), inputs, order path and
+  look step in front of the agent while that renderer is in play (coaching only; off unless
+  render.cards: true). Settings: `render:` in $KREW_HOME/krew.yaml.
+author: krew
+entry: __init__.py
+kind: standalone
+requires_hermes: ">=0.21.4"
+requires_env: []
+provides:
+  - toolset: image_gen
+    tools: [render_order]

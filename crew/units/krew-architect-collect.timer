@@ -1,0 +1,11 @@
+# krew: architect collect every morning (the reference install runs it at 06:50).
+[Unit]
+Description=06:50 architect collect
+
+[Timer]
+OnCalendar=*-*-* 06:50:00
+Persistent=false
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,22 @@
+# krew security rails settings: copy to $KREW_HOME/rails.yaml (krew-install does, if missing).
+# The T0 policy itself is $KREW_HOME/tier0.yaml (config/tier0.example.yaml); this file is the rest.
+
+hooks:
+  # krew-install --hooks writes the T0 gate into every profile's config.yaml with this matcher, widened per
+  # profile where it acts through more tools (the defaults below are the crew's).
+  tier0_matcher: terminal|execute_code|write_file|patch
+  extra_matchers:
+    default: computer_use
+    zoey: browser
+    lila: browser_navigate
+  # the profiles whose test runs go through the board sandbox (rails/krew_test_sandbox.py, needs bwrap)
+  test_sandbox_profiles: [bash, steward, vera]
+
+prod_guard:
+  # rails/krew-prod-guard.py: FILES production runs on, made immutable (sudo chattr +i). Relative paths are read
+  # against `root`. Empty = nothing guarded (status says so).
+  root: ~/projects/<your-rails-repo>
+  files: []
+  # files:
+  #   - display/<your-wall>.html
+  #   - scripts/<your-wall-server>.py

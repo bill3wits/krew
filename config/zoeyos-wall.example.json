@@ -1,0 +1,12 @@
+{
+  "_about": "zoeyos-wall's settings (copy to $KREW_HOME/zoeyos-wall.json): kill-search for the agent's web tools and what counts as your network. A key here replaces the plugin's default. search.kill OFF = nothing changes; ON = web_search goes to relay_url (a SearXNG on your network) or answers that search is off, web_extract goes to relay_extract_url (a firecrawl /v1/scrape) or answers that page reads are off, and a browser_* tool may not open an address outside your network. KREW_SEARCH_KILL=1/0 in the gateway's environment outranks search.kill. lan_ranges defaults to the private address ranges plus localhost (set it to replace them); name the hosts on your network in lan_hosts: under kill-search a name is never resolved to decide. The Wall's player is ZOEYOS_PLAYER in the environment (default http://127.0.0.1:8100).",
+  "lan_hosts": [
+    "localhost"
+  ],
+  "search": {
+    "kill": false,
+    "relay_url": "",
+    "relay_extract_url": "",
+    "timeout_s": 10
+  }
+}

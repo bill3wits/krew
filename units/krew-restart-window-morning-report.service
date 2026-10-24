@@ -1,0 +1,12 @@
+# krew: the morning after a restart window: which owed units it restarted, held, failed or left owed (read-only;
+# window/scripts/restart-window-morning-report.py). The reference install ran it once, the morning after its first
+# window, as a dated one-shot (`--since "<the window's evening>" --confirm-clear`); krew's timer runs it every
+# morning for last night (KREW_MORNING_REPORT_SINCE / KREW_MORNING_REPORT_UNITS pin a night and its units).
+[Unit]
+Description=krew restart-window morning report: what last night's window restarted, held or left owed (read-only)
+
+[Service]
+Type=oneshot
+Environment=KREW_HOME={krew_home}
+ExecStart={python} {krew}/window/scripts/restart-window-morning-report.py
+TimeoutStartSec=600

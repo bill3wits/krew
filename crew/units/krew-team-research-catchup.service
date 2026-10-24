@@ -1,0 +1,11 @@
+# krew: team research catch-up: writes the research note at 02:25 if the window did not.
+[Unit]
+Description=krew team research catch-up
+
+[Service]
+Type=oneshot
+TimeoutStartSec=45min
+Environment=HERMES_WRITE_SAFE_ROOT=%h/Desktop/krew-deliverables:%h/.krew/memory/ms:%h/.krew/docs
+Environment=TEAM_SOURCES_V2=1
+Environment=KREW_T0_MODE=enforce
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run team-research-catchup.sh

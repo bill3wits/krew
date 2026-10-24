@@ -1,0 +1,13 @@
+# krew: opt-in (a dated one-shot: enabled on a fresh install it fires at once, for nothing); `--enable <name>` turns it on, `--enable all` never does.
+# The reference install's one-shot, dated as it ran there (2026-10-01 06:00, the morning after a PyJWT install into the
+# live Hermes env). Persistent=true: enabled later, it fires once at once. For another package or date, copy the pair
+# and change the ExecStart's package and --newer-than. init writes it and never enables it unnamed.
+[Unit]
+Description=One shot, 2026-10-01 06:00: did the nightly trail's security scan drop PyJWT after the live-env install
+
+[Timer]
+OnCalendar=2026-10-01 06:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

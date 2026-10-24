@@ -1,0 +1,13 @@
+{
+  "_doc": "Things installed on purpose with an end date. crew/lib/krew_daily.py shows one 'watch' row for each that is still installed after `until` (a unit that is still loaded), with the tail of `result_file` so the decision can be made from the page. Remove the entry when the thing is removed. The reference install's own list is install-specific and not shipped; _example shows the shape.",
+  "_example": {
+    "id": "feed-probe",
+    "what": "A one-week probe timer",
+    "why": "Decides whether a collector can move into off-hours.",
+    "units": ["feed-probe.timer"],
+    "until": "YYYY-MM-DD",
+    "result_file": "{home}/.hermes/logs/feed-probe.log",
+    "owner": "steward"
+  },
+  "temporaries": []
+}

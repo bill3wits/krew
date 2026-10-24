@@ -1,0 +1,11 @@
+# krew: the room's beam mic - is its PipeWire source still there and does the ear still get a beam angle? Report only
+# (one card per 5-min fault, closed by the probe when the mic is back); it never restarts, reloads or changes anything.
+# The mic's source name is KREW_BEAM_MIC_SOURCE (crew.yaml env:); the ear is read through the Wall's player.
+# krew: opt-in
+[Unit]
+Description=krew beam-mic probe: the beam mic's source present + beam angle fresh, one card per 5-min fault, report only
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run beam-mic-probe.py tick
+TimeoutStartSec=60

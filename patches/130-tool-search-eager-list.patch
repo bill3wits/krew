@@ -1,0 +1,39 @@
+# why: tools.tool_search.eager: tool names that are never deferred. Upstream defers every plugin tool once Tool Search is on, so a plugin tool a profile uses in most sessions costs a search + describe + call round trip each time. Default empty: nothing changes until a profile names a tool.
+# tests: 
+# upstream: candidate
+# base: hermes-agent 35272ce28b29 (v0.21.4+canary.20260928T071354Z-19-g35272ce28b)
+
+diff --git a/tools/tool_search.py b/tools/tool_search.py
+index 6466dc49ad..7748133a5e 100644
+--- a/tools/tool_search.py
++++ b/tools/tool_search.py
+@@ -50,6 +50,9 @@ class ToolSearchConfig:
+     listing_max_tokens: int = 4000  # budget = min(this, threshold_pct% of context)
+     # None = curated default; an explicit list replaces it wholesale ([] = defer no core tools).
+     defer_tools: Optional[frozenset] = None
++    # Names that are never deferred, whatever else says so (``tools.tool_search.eager``): a plugin or
++    # MCP tool a profile uses in most of its sessions belongs in the array, not behind the bridge.
++    eager_tools: frozenset = frozenset()
+ 
+     @property
+     def effective_defer_tools(self) -> frozenset:
+@@ -80,7 +83,9 @@ class ToolSearchConfig:
+             listing=_tri_state(raw.get("listing", "auto")),
+             listing_max_tokens=_clamped_int(raw.get("listing_max_tokens"), 4000, 200, 60000),
+             defer_tools=(frozenset(str(n).strip() for n in defer_raw if str(n).strip())
+-                         if isinstance(defer_raw, (list, tuple, set)) else None))
++                         if isinstance(defer_raw, (list, tuple, set)) else None),
++            eager_tools=(frozenset(str(n).strip() for n in raw.get("eager") if str(n).strip())
++                         if isinstance(raw.get("eager"), (list, tuple, set)) else frozenset()))
+ 
+ 
+ _TRI_STATE_ALIASES = {"true": "on", "1": "on", "yes": "on", "false": "off", "0": "off", "no": "off"}
+@@ -153,6 +158,8 @@ def is_deferrable_tool_name(name: str, defer_tools: Optional[frozenset] = None)
+     plugin tool). Bridge names never defer."""
+     if name in BRIDGE_TOOL_NAMES:
+         return False
++    if name in load_config_readonly().eager_tools:
++        return False
+     if defer_tools is not None and name in defer_tools:
+         return True
+     if name in _core_tool_names():

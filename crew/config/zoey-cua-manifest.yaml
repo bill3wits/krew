@@ -1,0 +1,59 @@
+# Crissa's computer-use ceiling (the owner 2026-10-01). Hands run with --yolo, which hermes maps to cua-driver
+# `unrestricted`; a version-3 manifest keeps a ceiling on that bypass: anything outside it fails closed in the driver.
+# Live copy: $HERMES_HOME/profiles/zoey/cua-manifest.yaml (named in her config.yaml computer_use.capability_manifest;
+# krew-install init writes both from this file, `~` as the Hermes home's own account).
+#
+# 2026-10-02: her own private screen and hermes's Chromium on it (below). Before that: her own browser only. The Tk
+# wall was REMOVED 10-01 (the owner, option 3): Tk takes no window-addressed input, so every click on it was a
+# real-pointer click at a screen point the manifest does not check, and the wall is full-screen. Linux matches an
+# app by EXECUTABLE only, so an entry for the owner's own browser binary covers the owner's windows too; the cua
+# daemon is X11-only and a native Wayland window it cannot see. Turning on the Wayland backend would break that.
+# Measured 10-01: Chromium ignores window-addressed (background) input too, so with GNOME's remote input revoked she
+# can list and capture a browser but cannot click or type in it.
+#
+# Window titles are listable (desktop.display, see below). No files (no read, no write), no launch or kill, no
+# clipboard, no window resize, no full-desktop capture, no
+# browser/CDP tools, no recording, no config changes, no installs.
+version: 3
+
+allow:
+  tools:
+    - start_session
+    - end_session
+    - list_windows
+    - list_apps
+    - get_window_state
+    - get_screen_size
+    - get_cursor_position
+    - get_config
+    - bring_to_front
+    - click
+    - double_click
+    - right_click
+    - scroll
+    - drag
+    - type_text
+    - press_key
+    - hotkey
+    - set_value
+    # her private screen is hers alone (the screen check passed 10-02), so a whole-screen capture shows only her
+    - get_desktop_state
+
+resources:
+  apps:
+    # 2026-10-02 (the owner): her OWN screen and her OWN browser. The owner's browser is not on this list: an
+    # executable entry covered the owner's own windows too. hermes's Chromium runs only on her private screen
+    # (the hands kit's screen check proves it before computer_use is in her kit). A hermes update that moves
+    # Chromium to a new build needs this path moved (the build number is the pinned Hermes's).
+    - executable: ~/.hermes/tools/chromium-1208/chrome-linux64/chrome
+      windows: all
+    # 2026-10-03 (the owner): her screen's desktop window. Xfce runs only on her private screen (the owner's
+    # session is GNOME); the 10-02 drill's own lesson: "computer_use capture on the desktop window fails (outside
+    # capability manifest)".
+    - executable: /usr/bin/xfdesktop
+      windows: all
+  # display: true = she may LIST windows (titles, pids). hermes's computer_use needs list_windows to find a
+  # window; display: false refused it ("desktop display observation is outside the capability manifest").
+  # Full-screen capture stays off: get_desktop_state is not in allow.tools.
+  desktop:
+    display: true

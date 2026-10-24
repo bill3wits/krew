@@ -1,0 +1,17 @@
+110-kanban-test-isolation.patch
+120-subdirectory-hints-switch.patch
+130-tool-search-eager-list.patch
+140-cron-worker-bootstrap.patch
+150-npm-vuln-clear.patch
+160-toolset-cache-custom-names.patch
+161-test-plugin-toolset-cache-custom-names.patch
+170-kanban-dashboard-board-fallback.patch
+180-brace-expansion-5012.patch
+190-undici-6290.patch
+20-kanban-protocol-violation-limit.patch
+200-plugin-parallel-safe.patch
+210-bot-desktop-private-runtime.patch
+220-searxng-query-guard.patch
+50-kanban-lean-spawn.patch
+70-kanban-sticky-park-cap-ceiling.patch
+75-kanban-decompose-depth.patch

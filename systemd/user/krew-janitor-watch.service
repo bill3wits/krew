@@ -1,0 +1,12 @@
+[Unit]
+Description=krew Janitor's watcher: tick fresh, timer active, last run ok; one card per episode (off switch: ~/.hermes/janitor-watch.off)
+Documentation=file://@KREW_HOME@/janitor/README.md
+After=default.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@KREW_HOME@/janitor
+# Report-only: KREW_JANITOR_WATCH_ACT=1 also starts ONE janitor run per episode (a oneshot, never a restart).
+ExecStart=@PYTHON@ @KREW_HOME@/janitor/janitor-watch.py
+TimeoutStartSec=180
+Nice=10

@@ -1,0 +1,422 @@
+# M&S settings: copy to $KREW_HOME/ms.yaml (default ~/.krew/ms.yaml; MS_SETTINGS overrides the path).
+# Nothing in this file is needed: with no ms.yaml, M&S starts empty and uses discovery (krew-ms.py) to find this
+# machine's units, endpoints, Python envs, GPUs, models and Hermes profiles. Machine specifics go here, never in code.
+
+upgrades: false          # true allows package upgrades, the vLLM canary, rollbacks and unit restarts (--apply-green ...)
+# state_dir: ~/.krew/ms   # reports, manifests and the decisions ledger (decisions.json)
+# env_roots: []           # folders whose subfolders are Python envs (each <env>/bin/python or <env>/.venv/bin/python)
+
+discovery:               # krew-ms.py, read-only; every key optional
+  units:
+    prefixes: [hermes-, krew-]      # systemd units named like this are yours
+    exec_markers: []                # [] = your home, $KREW_HOME and $HERMES_HOME: a unit whose ExecStart points there is yours
+  env_roots: [~/.venvs, ~/venvs, ~/envs]
+  ports:
+    owners: self                    # probe listening sockets owned by you; `all` probes every local listener
+    probe_timeout_s: 0.8
+  model_dirs: []                    # extra Hugging Face style caches (models--org--name); HF_HOME / ~/.cache/huggingface are read anyway
+  note_days: 7                      # how long a new / removed note stays on the map
+# render:
+#   env: ''                         # the env that holds your render tool (the reference install: comfyui); a hold on it pauses render cards
+
+# ---------------------------------------------------------------------------------------------------------------
+# THE REFERENCE INSTALL (regenerated 2026-10-10 from its config/ms-house.yaml, comments left out): the machine krew was
+# built on, its M&S lists verbatim - every env, smoke test, service, health check, endpoint, canary and GPU number it runs
+# today. Commented out: uncomment only what is true on YOUR machine (tests/ms_defaults_only.py reads this block as the
+# reference profile). Placeholders: ${MS_ENVS_ROOT} = your env root (env var, else ${KREW_HOME}/envs), ${KREW_HOME} = krew's
+# state home, {data} = its data disk, {zoeyos_repo} = the Crissa checkout, {krew_repo} = this checkout, {deliverables} =
+# the owner's deliverables folder, {python} = the interpreter running M&S. Its own unit / env-var / file names keep their
+# names with its prefix written `ref` (ref-conductor.service, REF_FACE_MP_MODEL); every other unit is named as it is
+# (rail-stt, hindsight, ops, crew). Kanban assignees are the crew's profile names (ada, steward, bash). `upgrades: true`
+# is what it runs with (its nightly is --apply-green).
+# ---------------------------------------------------------------------------------------------------------------
+# upgrades: true
+# integrations: house
+# state_dir: ${KREW_HOME}/ms
+# env_roots:
+# - ${MS_ENVS_ROOT}
+# envs:
+#   audio8-tts:
+#     role: Audio8 PA announcer :8024
+#     heavy: false
+#     smoke:
+#       code: import numpy, scipy.signal, onnxruntime; from tokenizers import Tokenizer; from fastapi import FastAPI;
+#         from pydantic import BaseModel; import arktts_runtime.runtime; print('audio8 OK', onnxruntime.__version__,
+#         numpy.__version__)
+#       env:
+#         PYTHONPATH: '{data}/services/audio8-tts/onnx_runtime'
+#       timeout: 180
+#     services:
+#     - unit: audio8-tts.service
+#       scope: user
+#       health: http://127.0.0.1:8024/api/health
+#       health_wait_s: 120
+#       restart: restart
+#     apply: green
+#   comfyui:
+#     role: ComfyUI :8188 — Render occupancy; flux/LTX recipes under {data}/comfy/workflows
+#     heavy: true
+#     smoke:
+#       code: import folder_paths; print('comfy', getattr(folder_paths, 'base_path', 'ok'))
+#       env:
+#         PYTHONPATH: '{data}/comfy'
+#       timeout: 60
+#     gpu_shared: true
+#     apply: green
+#   cosmos-edge:
+#     role: cosmos bench
+#     heavy: true
+#   audio8-asr:
+#     role: the ear's ASR :8096 (ARK-ASR int8 ONNX, CPU) - own env since cosy-retire 2026-10-07 (was the cosyvoice
+#       env)
+#     heavy: false
+#     smoke:
+#       code: import sys; sys.path.insert(0, '{data}/models/ark-asr-0.6b-int8-onnx'); import torch, onnxruntime, transformers,
+#         librosa, soundfile; import infer_ark_audio_onnx; print('audio8-asr OK', torch.__version__, onnxruntime.__version__,
+#         transformers.__version__)
+#       timeout: 300
+#     services:
+#     - unit: audio8-asr.service
+#       scope: user
+#       health: http://127.0.0.1:8100/v1/ear?part=asr
+#       health_wait_s: 180
+#       restart: report
+#     apply: green
+#   chatterbox-turbo:
+#     role: the voice :7789 (turbo-voice.service, Chatterbox Turbo; replaced Cosy 2026-10-06)
+#     heavy: true
+#     smoke:
+#       code: import torch, librosa, perth; from chatterbox.tts_turbo import ChatterboxTurboTTS; print('turbo OK',
+#         torch.__version__)
+#       env:
+#         HF_HUB_OFFLINE: '1'
+#       timeout: 180
+#     services:
+#     - unit: turbo-voice.service
+#       scope: user
+#       health: http://127.0.0.1:7789/health
+#       restart: report
+#       occupancy_parked_in:
+#       - beast
+#       - 'off'
+#     gpu_shared: true
+#     apply: report
+#   hindsight:
+#     role: memory
+#     heavy: false
+#     smoke:
+#       code: import hindsight_api.main; import fastmcp.server; from hindsight_api.api import create_app; print('hindsight-api
+#         OK')
+#       timeout: 180
+#     services:
+#     - unit: hindsight.service
+#       scope: system
+#       health: http://127.0.0.1:8888/health
+#       health_wait_s: 120
+#       restart: restart
+#     apply: green
+#   mediapipe:
+#     smoke:
+#       code: import os, numpy as np, cv2, mediapipe as mp; from mediapipe.tasks.python import BaseOptions; from mediapipe.tasks.python.vision
+#         import FaceLandmarker, FaceLandmarkerOptions, RunningMode; m = os.environ.get('REF_FACE_MP_MODEL', '${MS_ENVS_ROOT}/mediapipe-models/face_landmarker.task');
+#         lm = FaceLandmarker.create_from_options(FaceLandmarkerOptions(base_options=BaseOptions(model_asset_path=m),
+#         running_mode=RunningMode.IMAGE, num_faces=1)); r = lm.detect(mp.Image(image_format=mp.ImageFormat.SRGB,
+#         data=np.zeros((96, 96, 3), np.uint8))); print('mediapipe OK', mp.__version__, cv2.__version__, 'faces',
+#         len(r.face_landmarks))
+#       timeout: 120
+#     apply: report
+#   mfa:
+#     smoke:
+#       code: import sys; sys.path.insert(0, '{zoeyos_repo}/lib'); import align_mfa; e = align_mfa.Engine(); e.start();
+#         print('mfa OK warm %.1fs' % e.load_s); e.proc.terminate(); e.proc.join(10)
+#       timeout: 300
+#     apply: green
+#   parakeet:
+#     role: RETIRED NeMo parakeet — units deleted 2026-09-05
+#     heavy: false
+#     smoke:
+#       code: import nemo.collections.asr
+#       timeout: 240
+#     apply: green
+#   parakeet-onnx:
+#     role: RETIRED onnx side-car — env deleted 2026-09-05
+#     heavy: false
+#     smoke:
+#       code: import sherpa_onnx; import onnxruntime
+#       timeout: 120
+#     apply: green
+#   rail-stt:
+#     role: ear STT client (read through the Crissa player's /v1/ear)
+#     heavy: false
+#     smoke:
+#       code: import rail_stt; from hyperpyyaml import load_hyperpyyaml
+#       env:
+#         PYTHONPATH: ~/projects/rail-stt
+#       timeout: 240
+#     services:
+#     - unit: rail-stt.service
+#       scope: user
+#       health: http://127.0.0.1:8100/v1/ear?part=stt
+#       health_wait_s: 90
+#       restart: report
+#     - unit: rail-align.service
+#       scope: user
+#       health: http://127.0.0.1:8100/v1/rail/align/health
+#       health_wait_s: 90
+#       restart: report
+#     - unit: ws-shadow.service
+#       scope: user
+#       health: http://127.0.0.1:8093/health
+#       health_wait_s: 90
+#       restart: restart
+#     - unit: enroll-panel.service
+#       scope: user
+#       health: http://127.0.0.1:8100/v1/rail/enroll/health
+#       health_wait_s: 60
+#       restart: restart
+#     apply: green
+#   unsloth:
+#     role: unsloth base
+#     heavy: true
+#     smoke:
+#       code: import importlib.metadata as m; print('unsloth', m.version('unsloth'))
+#       timeout: 30
+#     gpu_shared: true
+#     apply: green
+#   unsloth-train:
+#     role: door/seat LoRA train
+#     heavy: true
+#     smoke:
+#       code: import importlib.metadata as m; print('unsloth-train', m.version('torch'))
+#       timeout: 30
+#     gpu_shared: true
+#     apply: green
+#   vllm:
+#     role: rail-presence + rail-camera (vLLM 0.27.1 cu130, not Qwen serve)
+#     heavy: true
+#     smoke:
+#       code: import rail_presence; import rail_presence.grabber; print('presence-rails')
+#       env:
+#         PYTHONPATH: ~/projects/rail-presence/src
+#       timeout: 240
+#     services:
+#     - unit: rail-presence.service
+#       scope: user
+#       health: http://127.0.0.1:8100/v1/rail/presence/health
+#       health_wait_s: 180
+#       restart: report
+#     - unit: rail-camera.service
+#       scope: user
+#       health: http://127.0.0.1:8100/v1/rail/camera/health
+#       health_wait_s: 120
+#       restart: report
+#     - unit: ref-conductor.service
+#       scope: user
+#       health: http://127.0.0.1:8100/v1/health
+#       restart: report
+#     - unit: ref-conductor-bench.service
+#       scope: user
+#       health: http://127.0.0.1:8110/v1/health
+#       restart: report
+#     - unit: ref-lila-conductor.service
+#       scope: user
+#       health: http://127.0.0.1:8101/v1/health
+#       restart: report
+#     gpu_shared: true
+#     apply: green
+#   vllm-0271-cu132:
+#     role: live Qwen vLLM 0.27.1 cu132 — crew :8005 / Beast (ops :8000 runs ${MS_ENVS_ROOT}/vllm-030-cu132 since
+#       09-30)
+#     heavy: true
+#     smoke:
+#       code: import fastapi, pydantic; print('qwen-ops-api', fastapi.__version__, pydantic.__version__)
+#       timeout: 30
+#     services:
+#     - unit: crew.service
+#       scope: user
+#       health: http://127.0.0.1:8005/v1/models
+#       restart: report
+#       occupancy_parked_in:
+#       - 'off'
+#     gpu_shared: true
+#     apply: green
+#   vllm-030-cu132:
+#     role: live Qwen vLLM 0.30.0 cu132 — ops :8000 (the engine switch 09-30; crew stays on vllm-0271-cu132)
+#     heavy: true
+#     smoke:
+#       code: import fastapi, pydantic; print('qwen-ops-api', fastapi.__version__, pydantic.__version__)
+#       timeout: 30
+#     services:
+#     - unit: ops.service
+#       scope: user
+#       health: http://127.0.0.1:8000/v1/models
+#       restart: report
+#       occupancy_parked_in:
+#       - beast
+#       - render
+#     gpu_shared: true
+#     apply: report
+#   wespeaker:
+#     role: WeSpeaker voice emb
+#     heavy: false
+#     smoke:
+#       code: import wespeakerruntime; print('wespeaker', getattr(wespeakerruntime, '__version__', 'ok'))
+#       timeout: 60
+#     apply: green
+# retired_envs:
+# - cosyvoice
+# - cosyvoice_vllm
+# - cosmos-edge
+# - cosyvoice_vllm.broken-0.9.20260812112155
+# - parakeet
+# - parakeet-onnx
+# - qwen-tts
+# - qwen3-tts-onnx
+# - vllm-0.28
+# - vllm-0.28.0
+# - vllm-nvfp4-sm120
+# - vllm-nvfp4-sm120-027
+# - vllm-rail
+# canary:
+#   enabled: true
+#   env: vllm-030-cu132
+#   endpoints:
+#   - url: http://127.0.0.1:8000/v1
+#     model: ops
+#     no_thinking: true
+#   - url: http://127.0.0.1:8005/v1
+#     model: crew
+#     prefer_in:
+#     - beast
+#     no_thinking: true
+#   model_05b:
+#     model: '{data}/hf/hub/models--Qwen--Qwen2.5-0.5B-Instruct/snapshots/7ae557604adf67be50417f59c2c2f167def9a775'
+#     port: 8001
+#     name: canary
+#     util: '0.025'
+#     kv_bytes: '67108864'
+#     max_len: '256'
+#     max_seqs: '1'
+#     free_mib_min: 2912
+#     vllm_bin: ${MS_ENVS_ROOT}/vllm-030-cu132/bin/vllm
+#     path: /usr/local/cuda-13.2/bin:${MS_ENVS_ROOT}/vllm-030-cu132/bin:/usr/local/bin:/usr/bin:/bin
+#     cuda_home: /usr/local/cuda-13.2
+#     ld_library_path: /usr/local/cuda-13.2/lib64
+#     hf_home: '{data}/hf'
+# occupancy:
+#   enabled: true
+#   mode_file: ~/.hermes/ref-gpu-mode
+#   train_busy_file: /run/hermes/train-busy
+# health:
+#   lanes:
+#     ops:
+#       url: http://127.0.0.1:8000/v1/models
+#       model: ops
+#       parked_in:
+#       - beast
+#     crew:
+#       url: http://127.0.0.1:8005/v1/models
+#       model: crew
+#     presence:
+#       url: http://127.0.0.1:8100/v1/rail/presence/health
+#     camera:
+#       url: http://127.0.0.1:8100/v1/rail/camera/health
+#     ear:
+#       url: http://127.0.0.1:8100/v1/ear?part=stt
+#     cosy:
+#       url: http://127.0.0.1:7789/health
+#       parked_in:
+#       - beast
+#     audio8_asr:
+#       url: http://127.0.0.1:8100/v1/ear?part=asr
+#     stamp_ui:
+#       url: http://127.0.0.1:8877/api/stats
+#       note_when_down: gold UI; idle/stop is allowed between label sessions
+#     hindsight:
+#       url: http://127.0.0.1:8888/health
+#     comfy:
+#       kind: comfy
+#   critical:
+#   - presence
+#   - camera
+#   optional:
+#   - stamp_ui
+# hindsight:
+#   env_file: '{data}/hindsight/hindsight.env'
+#   err_log: '{data}/hindsight/logs/hindsight-api.err.log'
+#   retain_tokens_max: 8192
+#   default_llm_base_url: http://127.0.0.1:8000/v1
+# kanban:
+#   enabled: true
+#   profile: ada
+#   max_mitigation_envs: 0
+#   assignees:
+#     drift: ada
+#     land: steward
+#     diagnose: bash
+#     summary: ada
+#     doctor: ada
+#     security: ada
+#     mitigation: bash
+#     render: ada
+#     promotion_alert: ada
+#     canary_skip: ada
+# notify:
+#   cmd:
+#   - '{python}'
+#   - '{zoeyos_repo}/scripts/zoey-page.py'
+# deliverables_dir: '{deliverables}'
+# manifest:
+#   live_path: ${KREW_HOME}/ms/MANIFEST-SYSTEM-LIVE.md
+# hold_file: ~/.hermes/ms-env-hold.json
+# holds:
+#   ttl_anchor: '2026-09-01'
+# roots_file: ${KREW_HOME}/ms-env-roots.json
+# render:
+#   enabled: true
+#   comfy_root: '{data}/comfy'
+#   comfy_stats_url: http://127.0.0.1:8188/system_stats
+#   recipes: ${KREW_HOME}/recipes.json
+#   env: comfyui
+# hermes_profiles:
+#   enabled: true
+#   names:
+#   - ada
+#   - bash
+#   - lila
+#   - scout
+#   - steward
+#   - vera
+#   - zoey
+#   workers:
+#   - ada
+#   - bash
+#   - steward
+#   - lila
+#   - vera
+#   - zoey
+#   packs_dir: '{krew_repo}/souls'
+#   live_dir: ~/.hermes/profiles
+#   config_floor: 12
+#   notes:
+#     scout: Steward researcher — notes only, never dispatch
+# patch_queue:
+#   enabled: true
+# doctor:
+#   upstream_apis_file: ~/.hermes/ref-ms-upstream-apis
+# os_lane: 'on'
+# text_file: ${KREW_HOME}/ms-text.yaml
+# ref_index:
+#   enabled: false
+#   sources:
+#   - docs
+#   - knowledge
+#   - skills
+#   - rails
+#   - render
+#   - hermes
+#   - hermes-changes
+#   - places
+#   cpu_quota: 300%
+#   threads: 3
+#   timeout_s: 3600

@@ -1,0 +1,8 @@
+[Unit]
+Description=Confirm the nightly trail's security scan no longer lists PyJWT after the live-env install - report only (exit 0 gone, 1 still listed, 2 no fresh scan)
+
+[Service]
+Type=oneshot
+Environment=KREW_HOME={krew_home}
+ExecStart={python} {krew}/ms/scripts/ms-security-confirm.py PyJWT --newer-than "2026-09-30 10:35" --out {krew_home}/ms/reports/pyjwt-trail-confirm.md
+SuccessExitStatus=1 2

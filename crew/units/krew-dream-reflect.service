@@ -1,0 +1,11 @@
+# krew: re-runs the night's dream (the whole idempotent pipeline, reflect included) after the closer has said its
+# word. Started by the window ticker's schedule; no timer of its own.
+[Unit]
+Description=krew dream reflect (re-run the night's dream after the closer)
+
+[Service]
+Type=oneshot
+TimeoutStartSec=45min
+EnvironmentFile=-%h/.krew/krew-day.env
+ExecStart=/bin/sh -c 'exec /usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run krew_memory.py dream-night --catchup $${KREW_DAY:+--day $$KREW_DAY}'
+Nice=10

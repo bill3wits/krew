@@ -1,0 +1,52 @@
+{
+  "_about": "Parity pass 2, lane E (2026-10-10): the PA announce drain lifted from the reference install - the queue, the line log, the overflow card, the plain-sentence rewrite, the speech hygiene - with krew_announce.py as the one seam (the reference install played the line on its own audio stack; krew hands it to the Wall's player, POST /v1/announce).",
+  "packages": {
+    "announce-drain": {
+      "kind": "crew",
+      "about": "crew/scripts/krew-announce-drain.py + its unit (long-running, opt-in by --enable announce-drain): one line at a time from the announce queue, a roundup when more than 3 wait, more than 5 dropped in an hour files one card. Every line is logged to <inbox>/announcer/ (the Daily's announcer row reads it).",
+      "files": [
+        "crew/scripts/krew-announce-drain.py",
+        "crew/lib/krew_announce.py",
+        "crew/lib/announce_queue.py",
+        "crew/lib/announce_log.py",
+        "crew/lib/announce_overflow.py",
+        "crew/lib/announce_rewrite.py",
+        "crew/lib/speakable.py",
+        "crew/units/krew-announce-drain.service"
+      ],
+      "optional_imports": [
+        "krew_hours",
+        "announce_log",
+        "announce_overflow",
+        "announce_queue",
+        "announce_rewrite",
+        "krew_announce",
+        "speakable"
+      ]
+    },
+    "improve-nnt": {
+      "kind": "crew",
+      "about": "The improvement round's NNT source, lifted from the reference install: nnt-repos.py (the week's repos from the video descriptions, called by steward-architect-run.sh research) and nnt-seen.py (the seen store team-eval-rank.py reads; without it the ranker says the store is off, once).",
+      "files": [
+        "crew/scripts/nnt-repos.py",
+        "crew/scripts/nnt-seen.py"
+      ],
+      "optional_imports": [
+        "architect_lib"
+      ]
+    }
+  },
+  "imports": {
+    "test_only": [
+      "announce_log",
+      "announce_queue",
+      "announce_overflow",
+      "announce_rewrite",
+      "krew_announce",
+      "architect_lib",
+      "idea_ledger",
+      "self_claims",
+      "pack_drift"
+    ]
+  }
+}

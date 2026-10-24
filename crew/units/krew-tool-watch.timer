@@ -1,0 +1,11 @@
+# krew: opt-in (off by default)
+[Unit]
+Description=krew tool-watch every 5min (off switch: $KREW_HOME/krew-tool-watch.off)
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+AccuracySec=15s
+
+[Install]
+WantedBy=timers.target

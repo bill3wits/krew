@@ -1,0 +1,8 @@
+# Drop-in: run the T0 gate in ENFORCE for everything this unit launches (the crew's gateways and crew loops).
+# The policy's own mode stays shadow, so the owner's interactive CLI only records; a crew run launched by a
+# timer or a gateway carried no mode before this and the gate ran in shadow for it.
+# Install: copy to ~/.config/systemd/user/<unit>.service.d/krew-tier0.conf for each of
+#   hermes-gateway.service, hermes-<profile>-gateway.service, and every unit that starts crew runs,
+# then `systemctl --user daemon-reload` and restart the unit in your restart window.
+[Service]
+Environment=KREW_T0_MODE=enforce

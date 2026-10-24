@@ -1,0 +1,23 @@
+{
+  "_doc": "Copy to ~/.krew/site-units.json (or set KREW_SITE_UNITS) for site-local systemd units. Portable defaults ship in crew/lib/krew_daily.py and crew/scripts/steward-logs-collect.py; this file extends or replaces them.",
+  "health_units": {
+    "ops": "ops.service",
+    "crew": "crew.service",
+    "audio8_asr": "audio8-asr.service",
+    "voice": "voice.service",
+    "ear": "ear.service",
+    "presence": "presence.service",
+    "camera": "camera.service"
+  },
+  "steward_log_units": [
+    "audio8-asr.service",
+    "audio8-tts.service",
+    "ops.service",
+    "crew.service",
+    "voice.service",
+    "ear.service",
+    "presence.service",
+    "camera.service",
+    "hermes-gateway.service"
+  ]
+}

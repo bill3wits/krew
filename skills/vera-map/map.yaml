@@ -1,0 +1,18 @@
+# vera-map: the reviewer's index. sdlc-review is a skill, not a schema.
+name: vera-map
+who: vera
+description: One lookup, then the review skill and the board verbs. sdlc-review is a skill, not a schema.
+act_column: act
+rows:
+  - ask: "review · prodgate · crystal · taste"
+    do: "skill_view sdlc-review (bundled; allowlisted), then kanban_comment / request_review"
+  - ask: "complete · crystal missing"
+    skill: krew-deliverable
+  - ask: "third try · frame"
+    skill: krew-reframe
+where:
+  - "Finished work: the deliverables folder your SOUL names (`KREW_DELIVERABLES`)"
+  - "Board: the kanban board Ada runs (`team_board`)"
+rule: >
+  One lookup, then act. kanban_lean stays on the belt. sdlc-review is the
+  index row: do not carry it as a tool schema.

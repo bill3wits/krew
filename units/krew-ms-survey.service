@@ -1,0 +1,8 @@
+[Unit]
+Description=M&S survey: re-read the envs, report drift between nightly runs, refresh manifests (read-only)
+
+[Service]
+Type=oneshot
+Nice=15
+Environment=KREW_HOME={krew_home}
+ExecStart={python} {krew}/ms/scripts/krew-ms.py --survey

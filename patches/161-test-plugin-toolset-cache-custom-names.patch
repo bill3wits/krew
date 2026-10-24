@@ -1,0 +1,74 @@
+# why: Regression test for patch 160: the plugin-toolset cache must contain a toolset a plugin built with create_custom_toolset over a built-in tool.
+# tests: tests/hermes_cli/test_plugin_toolset_cache_custom_names.py::test_custom_toolset_name_reaches_cache
+# upstream: candidate (with 160)
+# base: hermes-agent 35272ce28b29 (v0.21.4+canary.20260928T071354Z-19-g35272ce28b)
+
+diff --git a/tests/hermes_cli/test_plugin_toolset_cache_custom_names.py b/tests/hermes_cli/test_plugin_toolset_cache_custom_names.py
+new file mode 100644
+index 0000000000..8a2c4d6f1e
+--- /dev/null
++++ b/tests/hermes_cli/test_plugin_toolset_cache_custom_names.py
+@@ -0,0 +1,63 @@
++"""Cache line for the _nowait plugin-toolset fast path must carry plugin-created custom toolsets."""
++
++import json
++
++import pytest
++
++pytest.importorskip("hermes_cli.plugins")
++
++import hermes_cli.plugins as P  # noqa: E402
++import toolsets  # noqa: E402
++
++
++@pytest.fixture
++def _capture_cache(tmp_path, monkeypatch):
++    """Route the persistence write to a scratch path and record the blob."""
++    cache_path = tmp_path / "plugin_toolset_keys.json"
++    written = {}
++
++    def _fake_atomic_write(path, data, *args, **kwargs):
++        written["path"] = str(path)
++        written["blob"] = data
++
++    monkeypatch.setattr(P, "_plugin_toolset_keys_cache_path", lambda: cache_path)
++    import utils
++
++    monkeypatch.setattr(utils, "atomic_json_write", _fake_atomic_write)
++    yield cache_path, written
++
++
++def test_custom_toolset_name_reaches_cache(_capture_cache, monkeypatch):
++    cache_path, written = _capture_cache
++
++    # A plugin built a custom toolset over a built-in tool (krew-hands' skill_read shape):
++    # a static TOOLSETS key, carrying no plugin-registered tool, so get_plugin_toolsets()
++    # cannot see it.
++    monkeypatch.setitem(toolsets.TOOLSETS, "skill_read", {"tools": ["skill_view"]})
++
++    # Premise: the cache's original line is blind to this shape.
++    assert "skill_read" not in {k for k, _, _ in P.get_plugin_toolsets()}
++
++    P._persist_plugin_toolset_keys()
++
++    blob = written["blob"]
++    if isinstance(blob, str):
++        blob = json.loads(blob)
++    assert isinstance(blob, dict), f"cache blob shape changed: {type(blob)}"
++    keys = blob["toolset_keys"]
++    assert "skill_read" in keys, (
++        "custom toolset name missing from the persisted cache — "
++        "the _nowait fast path will race it as an unknown toolset"
++    )
++    # Every persisted key is either a plugin toolset or a static toolset key.
++    valid = {k for k, _, _ in P.get_plugin_toolsets()} | set(toolsets.TOOLSETS)
++    assert set(keys) <= valid, f"unexpected keys persisted: {sorted(set(keys) - valid)}"
++
++
++def test_persist_is_idempotent(_capture_cache, monkeypatch):
++    cache_path, written = _capture_cache
++    monkeypatch.setitem(toolsets.TOOLSETS, "skill_read", {"tools": ["skill_view"]})
++    P._persist_plugin_toolset_keys()
++    first = written["blob"]
++    P._persist_plugin_toolset_keys()
++    assert written["blob"] == first, "persist must be deterministic for the same registry state"

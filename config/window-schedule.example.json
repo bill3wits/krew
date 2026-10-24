@@ -1,0 +1,555 @@
+{
+ "_doc": "krew-window-tick's jobs: copy to $KREW_HOME/window-schedule.json (krew-install.py does, when it is absent). Each job: name, unit (a systemd --user unit), offset_min (minutes after the window opens) or before_close_min, needs_min (skip tonight if less window is left), after [jobs] (start once they have a final verdict), hold_on_failed, status_line (the job writes $KREW_HOME/job-status/<key>-<day>.json), legacy_timer (while that timer is enabled it owns the job), scope system, enabled. krew ships the reference install's whole off-hours chain on krew's unit names (the User 2026-10-10: a clean install runs what the reference box runs): day-close, the M&S nightly (report only until upgrades: true in ms.yaml), the improvement round (lessons, research, team eval, improve-file, outcomes), pack drift, the unit-registry refresh, the architect notes, the dream night and reflect, the morning brief and the Daily as the window's close. The Wall-side jobs (pose sync, the mouth drill) are Crissa's, and a dated one-off report has no unit. `enabled: false` turns one off. `watch` is the Daily's roll-call (unit+scope or file, every_min + grace_min); the ticker ignores it. `_reference_install` is the machine krew was built on, its schedule and its Daily `watch` roll-call verbatim (its _note/_why fields left out: history, not settings; its `house` name prefix written `ref`, its memory disk `{memory}`); the ticker never reads it. Copy a row into `jobs` only when that unit exists on your machine.",
+ "jobs": [
+  {
+   "name": "kanban-day-close",
+   "unit": "krew-kanban-day-close.service",
+   "offset_min": 2,
+   "needs_min": 5,
+   "enabled": true
+  },
+  {
+   "name": "ms-nightly",
+   "unit": "krew-ms-nightly.service",
+   "offset_min": 5,
+   "needs_min": 30,
+   "status_line": "ms-nightly",
+   "legacy_timer": "krew-ms-nightly.timer",
+   "enabled": true
+  },
+  {
+   "name": "outcomes-lessons",
+   "unit": "krew-improvement-lessons.service",
+   "after": [
+    "ms-nightly"
+   ],
+   "needs_min": 5,
+   "status_line": "outcomes-lessons",
+   "enabled": true
+  },
+  {
+   "name": "pack-drift-check",
+   "unit": "krew-pack-drift-check.service",
+   "after": [
+    "ms-nightly"
+   ],
+   "needs_min": 5,
+   "enabled": true
+  },
+  {
+   "name": "units-refresh",
+   "unit": "krew-units-refresh.service",
+   "after": [
+    "ms-nightly"
+   ],
+   "needs_min": 5,
+   "enabled": true
+  },
+  {
+   "name": "architect-collect-evening",
+   "unit": "krew-architect-collect.service",
+   "after": [
+    "pack-drift-check"
+   ],
+   "needs_min": 10,
+   "status_line": "collect",
+   "enabled": true
+  },
+  {
+   "name": "team-research",
+   "unit": "krew-team-research.service",
+   "after": [
+    "pack-drift-check",
+    "architect-collect-evening",
+    "outcomes-lessons"
+   ],
+   "needs_min": 90,
+   "status_line": "research",
+   "enabled": true
+  },
+  {
+   "name": "team-eval",
+   "unit": "krew-team-eval.service",
+   "after": [
+    "team-research"
+   ],
+   "needs_min": 60,
+   "status_line": "team-eval",
+   "hold_on_failed": true,
+   "enabled": true
+  },
+  {
+   "name": "improve-file",
+   "unit": "krew-improve-file.service",
+   "after": [
+    "team-eval"
+   ],
+   "needs_min": 10,
+   "status_line": "improve-file",
+   "hold_on_failed": true,
+   "enabled": true
+  },
+  {
+   "name": "improvement-outcomes",
+   "unit": "krew-improvement-outcomes.service",
+   "after": [
+    "improve-file"
+   ],
+   "needs_min": 10,
+   "enabled": true
+  },
+  {
+   "name": "architect-logs",
+   "unit": "krew-architect-logs.service",
+   "after": [
+    "team-eval",
+    "architect-collect-evening"
+   ],
+   "needs_min": 40,
+   "status_line": "logs",
+   "enabled": true
+  },
+  {
+   "name": "architect-world",
+   "unit": "krew-architect-world.service",
+   "after": [
+    "architect-logs"
+   ],
+   "needs_min": 15,
+   "status_line": "world",
+   "enabled": true
+  },
+  {
+   "name": "architect-stack",
+   "unit": "krew-architect-stack.service",
+   "after": [
+    "architect-world"
+   ],
+   "needs_min": 20,
+   "status_line": "stack",
+   "enabled": true
+  },
+  {
+   "name": "architect-collect",
+   "unit": "krew-architect-collect.service",
+   "offset_min": 8,
+   "needs_min": 10,
+   "legacy_timer": "krew-architect-collect.timer",
+   "enabled": false
+  },
+  {
+   "name": "dream-night",
+   "unit": "krew-dream-night.service",
+   "before_close_min": 30,
+   "needs_min": 15,
+   "enabled": true
+  },
+  {
+   "name": "dream-reflect",
+   "unit": "krew-dream-reflect.service",
+   "after": [
+    "dream-night"
+   ],
+   "needs_min": 15,
+   "enabled": true
+  },
+  {
+   "name": "morning-brief",
+   "unit": "krew-morning-brief.service",
+   "before_close_min": 15,
+   "enabled": true
+  },
+  {
+   "name": "krew-daily",
+   "unit": "krew-daily.service",
+   "before_close_min": 10,
+   "enabled": true
+  }
+ ],
+ "watch": [
+  {
+   "routine": "janitor",
+   "unit": "krew-janitor.service",
+   "every_min": 5,
+   "grace_min": 15
+  },
+  {
+   "routine": "keeper",
+   "file": "{home}/.krew/memory/keeper/keeper.jsonl",
+   "every_min": 120,
+   "grace_min": 60
+  },
+  {
+   "routine": "hold-sweep",
+   "unit": "krew-hold-sweep.service",
+   "every_min": 2,
+   "grace_min": 10
+  },
+  {
+   "routine": "kanban-loop",
+   "unit": "krew-kanban-loop.service",
+   "every_min": 20,
+   "grace_min": 20
+  },
+  {
+   "routine": "render-collect",
+   "unit": "krew-render-collect.service",
+   "every_min": 2,
+   "grace_min": 10
+  },
+  {
+   "routine": "restart-window",
+   "unit": "krew-restart-window.service",
+   "every_min": 5,
+   "grace_min": 15
+  },
+  {
+   "routine": "ms-survey",
+   "unit": "krew-ms-survey.service",
+   "every_min": 120,
+   "grace_min": 30
+  },
+  {
+   "routine": "steward-sweep",
+   "unit": "steward-sweep.service",
+   "every_min": 60,
+   "grace_min": 30
+  },
+  {
+   "routine": "render-window",
+   "unit": "krew-render-window.service",
+   "every_min": 2,
+   "grace_min": 10
+  },
+  {
+   "routine": "board-gate",
+   "file": "{home}/.hermes/kanban-liveness.json",
+   "every_min": 2,
+   "grace_min": 10
+  },
+  {
+   "routine": "zoey-decide-watch",
+   "file": "{home}/.hermes/zoey-decide-watch.beat",
+   "every_min": 10,
+   "grace_min": 20,
+   "parked_in": [
+    "render"
+   ]
+  },
+  {
+   "routine": "wall-tab-probe",
+   "unit": "krew-wall-tab-probe.service",
+   "every_min": 2,
+   "grace_min": 10
+  },
+  {
+   "routine": "zoey-tool-watch",
+   "unit": "krew-tool-watch.service",
+   "every_min": 5,
+   "grace_min": 20
+  },
+  {
+   "routine": "beam-mic-probe",
+   "unit": "krew-beam-mic-probe.service",
+   "every_min": 1,
+   "grace_min": 10
+  },
+  {
+   "routine": "janitor-watch",
+   "unit": "krew-janitor-watch.service",
+   "every_min": 10,
+   "grace_min": 20
+  }
+ ],
+ "_reference_install": {
+  "left_out": {
+   "fields": [
+    "_note",
+    "_why"
+   ],
+   "watch": "its `watch` list is below (the Daily's roll-call: unit+scope or file, every_min + grace_min, parked_in); the ticker ignores it"
+  },
+  "jobs": [
+   {
+    "name": "kanban-day-close",
+    "unit": "ref-kanban-day-close.service",
+    "offset_min": 2,
+    "needs_min": 5,
+    "enabled": true
+   },
+   {
+    "name": "ms-nightly",
+    "unit": "nightly-tests.service",
+    "offset_min": 5,
+    "needs_min": 30,
+    "enabled": true,
+    "legacy_timer": "nightly-tests.timer"
+   },
+   {
+    "name": "outcomes-lessons",
+    "unit": "ref-improvement-lessons.service",
+    "after": [
+     "ms-nightly"
+    ],
+    "needs_min": 5,
+    "status_line": "outcomes-lessons",
+    "enabled": true
+   },
+   {
+    "name": "pack-drift-check",
+    "unit": "pack-drift-check.service",
+    "after": [
+     "ms-nightly"
+    ],
+    "needs_min": 5,
+    "enabled": true,
+    "legacy_timer": "pack-drift-check.timer"
+   },
+   {
+    "name": "architect-collect-evening",
+    "unit": "ref-architect-collect.service",
+    "scope": "system",
+    "after": [
+     "pack-drift-check"
+    ],
+    "needs_min": 10,
+    "status_line": "collect",
+    "enabled": true
+   },
+   {
+    "name": "team-research",
+    "unit": "ref-team-research.service",
+    "scope": "system",
+    "after": [
+     "pack-drift-check",
+     "architect-collect-evening",
+     "outcomes-lessons"
+    ],
+    "needs_min": 90,
+    "legacy_timer": "ref-team-research.timer",
+    "enabled": true,
+    "status_line": "research"
+   },
+   {
+    "name": "team-eval",
+    "unit": "ref-team-eval.service",
+    "after": [
+     "team-research"
+    ],
+    "needs_min": 60,
+    "legacy_timer": "ref-team-eval.timer",
+    "enabled": true,
+    "status_line": "team-eval",
+    "hold_on_failed": true
+   },
+   {
+    "name": "improve-file",
+    "unit": "ref-improve-file.service",
+    "after": [
+     "team-eval"
+    ],
+    "needs_min": 10,
+    "status_line": "improve-file",
+    "enabled": true,
+    "hold_on_failed": true
+   },
+   {
+    "name": "improvement-outcomes",
+    "unit": "ref-improvement-outcomes.service",
+    "after": [
+     "improve-file"
+    ],
+    "needs_min": 10,
+    "enabled": true
+   },
+   {
+    "name": "architect-logs",
+    "unit": "ref-architect-logs.service",
+    "scope": "system",
+    "after": [
+     "team-eval",
+     "architect-collect-evening"
+    ],
+    "needs_min": 40,
+    "legacy_timer": "ref-architect-logs.timer",
+    "enabled": true,
+    "status_line": "logs"
+   },
+   {
+    "name": "architect-world",
+    "unit": "ref-architect-world.service",
+    "scope": "system",
+    "after": [
+     "architect-logs"
+    ],
+    "needs_min": 15,
+    "legacy_timer": "ref-architect-world.timer",
+    "enabled": true,
+    "status_line": "world"
+   },
+   {
+    "name": "architect-stack",
+    "unit": "ref-architect-stack.service",
+    "scope": "system",
+    "after": [
+     "architect-world"
+    ],
+    "needs_min": 20,
+    "legacy_timer": "ref-architect-stack.timer",
+    "enabled": true,
+    "status_line": "stack"
+   },
+   {
+    "name": "architect-collect",
+    "unit": "ref-architect-collect.service",
+    "scope": "system",
+    "offset_min": 8,
+    "needs_min": 10,
+    "legacy_timer": "ref-architect-collect.timer",
+    "enabled": false
+   },
+   {
+    "name": "pose-freelance",
+    "unit": "ref-pose-freelance.service",
+    "after": [
+     "pack-drift-check"
+    ],
+    "needs_min": 180,
+    "enabled": true
+   },
+   {
+    "name": "dream-night",
+    "unit": "ref-dream-night.service",
+    "before_close_min": 30,
+    "needs_min": 15,
+    "enabled": true
+   },
+   {
+    "name": "dream-reflect",
+    "unit": "ref-dream-reflect.service",
+    "after": [
+     "dream-night"
+    ],
+    "needs_min": 15,
+    "enabled": true
+   },
+   {
+    "name": "morning-brief",
+    "unit": "ref-morning-brief.service",
+    "before_close_min": 15,
+    "legacy_timer": "ref-morning-brief.timer",
+    "enabled": true
+   },
+   {
+    "name": "ref-daily",
+    "unit": "ref-daily.service",
+    "before_close_min": 10,
+    "enabled": true
+   },
+   {
+    "name": "zoey-drill",
+    "unit": "zoey-drill.service",
+    "offset_min": 180,
+    "needs_min": 150,
+    "status_line": "zoey-drill",
+    "enabled": true
+   }
+  ],
+  "watch": [
+   {
+    "routine": "janitor",
+    "unit": "ref-janitor.service",
+    "every_min": 5,
+    "grace_min": 15
+   },
+   {
+    "routine": "keeper",
+    "file": "/data/ref-memory/keeper/keeper.jsonl",
+    "every_min": 120,
+    "grace_min": 60
+   },
+   {
+    "routine": "hold-sweep",
+    "unit": "ref-hold-sweep.service",
+    "every_min": 2,
+    "grace_min": 10
+   },
+   {
+    "routine": "kanban-loop",
+    "unit": "ref-kanban-loop.service",
+    "every_min": 20,
+    "grace_min": 20
+   },
+   {
+    "routine": "render-collect",
+    "unit": "ref-render-collect.service",
+    "every_min": 2,
+    "grace_min": 10
+   },
+   {
+    "routine": "restart-window",
+    "unit": "ref-restart-window.service",
+    "every_min": 5,
+    "grace_min": 15
+   },
+   {
+    "routine": "ms-survey",
+    "unit": "ms-survey.service",
+    "every_min": 120,
+    "grace_min": 30
+   },
+   {
+    "routine": "steward-sweep",
+    "unit": "steward-sweep.service",
+    "scope": "system",
+    "every_min": 60,
+    "grace_min": 30
+   },
+   {
+    "routine": "render-window",
+    "unit": "ref-render-window.service",
+    "every_min": 2,
+    "grace_min": 10
+   },
+   {
+    "routine": "board-gate",
+    "file": "{home}/.hermes/kanban-liveness.json",
+    "every_min": 2,
+    "grace_min": 10
+   },
+   {
+    "routine": "zoey-decide-watch",
+    "file": "{home}/.hermes/zoey-decide-watch.beat",
+    "every_min": 10,
+    "grace_min": 20,
+    "parked_in": [
+     "render"
+    ]
+   },
+   {
+    "routine": "wall-tab-probe",
+    "unit": "wall-tab-probe.service",
+    "every_min": 2,
+    "grace_min": 10
+   },
+   {
+    "routine": "tmp-checkout-report",
+    "unit": "tmp-checkout-report.service",
+    "every_min": 1440,
+    "grace_min": 120
+   },
+   {
+    "routine": "zoey-tool-watch",
+    "unit": "zoey-tool-watch.service",
+    "every_min": 5,
+    "grace_min": 20
+   },
+   {
+    "routine": "beam-mic-probe",
+    "unit": "beam-mic-probe.service",
+    "every_min": 1,
+    "grace_min": 10
+   }
+  ]
+ }
+}

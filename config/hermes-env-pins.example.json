@@ -1,0 +1,39 @@
+{
+ "_doc": "Minimum versions krew holds in the environment Hermes runs: copy to $KREW_HOME/hermes-env-pins.json. These are the reference install's pins for the Hermes pin krew ships (security fixes upstream had not picked up); each row: dist, min, install (optional exact spec), why. Remove a row when upstream's own pin reaches it. `ms/scripts/hermes-env-pins.py status` reads; `apply` needs upgrades: true.",
+ "pins": [
+  {
+   "dist": "PyJWT",
+   "min": "2.15.1",
+   "why": "upstream pins PyJWT[crypto]==2.13.0 for Python 3.14; ten advisories incl. GHSA-w2cx-738m-mc7w (HIGH), all fixed at 2.14.0; 2.15.1 installed 2026-09-30"
+  },
+  {
+   "dist": "httpcore2",
+   "min": "2.12.0",
+   "install": "httpcore2==2.13.1",
+   "why": "upstream pins httpx2==2.7.0 (and with it httpcore2 2.7.0); GHSA-7mj9-2mp8-4m2p HIGH (secure WebSocket traffic sent without TLS through a SOCKS proxy), fixed 2.10.0. Installed with httpx2 as a pair: httpx2 requires httpcore2 of the same version."
+  },
+  {
+   "dist": "httpx2",
+   "min": "2.12.0",
+   "install": "httpx2==2.13.1",
+   "why": "GHSA-7mj9-2mp8-4m2p and GHSA-8xx6-hgc6-gc2m HIGH (unbounded streaming decompression, fixed 2.12.0) + three MODERATE; used only by mcp / tools/mcp_tool.py. 2.13.1 is the current release (2026-09-30)."
+  },
+  {
+   "dist": "oauthlib",
+   "min": "4.0.0",
+   "why": "GHSA-hj66-6f7g-4r5v and GHSA-xpv3-w29h-x7cv MODERATE, fixed 4.0.0; the 09-29 'applied' row had installed it into the retired hermes-agent/venv."
+  },
+  {
+   "dist": "tornado",
+   "min": "6.5.9",
+   "install": "tornado==6.5.9",
+   "why": "GHSA-c2m8-h5v5-343r HIGH (StaticFileHandler follows symlinks outside static root, path traversal) and GHSA-chx6-46f5-w4vp HIGH (CurlAsyncHTTPClient unbounded decompression OOM), both fixed 6.5.9; 6.5.9 installed 2026-09-30 via uv --no-deps with a measured smoke (symlink-to-outside 403, legit file 200). The unbounded query-string row GHSA-3hv7-mjh2-fv65 (MODERATE) also clears at 6.5.9."
+  },
+  {
+   "dist": "urllib3",
+   "min": "2.8.0",
+   "install": "urllib3==2.8.0",
+   "why": "GHSA-8988-9cw3-xx77 HIGH (HTTPS proxy TLS configuration may be ignored or overridden), fixed 2.8.0; 2.8.0 installed 2026-09-30 via the pin apply (uv --no-deps) with a measured smoke. Same 2.7.0 row also clears GHSA-vxq7-64xx-v4gw (HIGH, unbounded chunk-size line in stream()/read_chunked()) and GHSA-gh4c-6fx4-qh6g (MODERATE, chunked-deflate infinite loop) at 2.8.0."
+  }
+ ]
+}

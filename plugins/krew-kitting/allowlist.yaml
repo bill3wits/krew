@@ -1,0 +1,136 @@
+# Crew skill allowlist — SoT for which SKILL.md names may enter the index.
+#
+#
+#
+# The krew-kitting plugin computes skills.disabled = (on disk) − (this ∪ house).
+#
+# KREW SKILLS ARE NOT LISTED HERE. Anything in hermes-packs/skills/ or under
+# a profile's skills/house/ is allowed on the profile that has it. That is how
+# zoey-auth / zoey-big-push / krew-render / scout-* / steward-logs survive every
+# hermes update without being re-added to a denylist.
+#
+#
+# not skills. This file does not disable them. toolsets stay in each
+# distribution config.yaml / crew.manifest.yaml.
+#
+# New Nous bundled SKILL.md names default OFF until someone adds them here.
+
+schema: krew_kitting_allowlist/v1
+
+bundled:
+  ada:
+    # ~7 orchestrate (synthesis). github-issues is Ada's board intake.
+    - hermes-agent
+    - plan
+    - github-issues
+    - requesting-code-review
+  bash:
+    # Coder keep from kitting-analysis-bash.md (~30). adversarial-gate is house.
+    - systematic-debugging
+    - python-debugpy
+    - node-inspect-debugger
+    - requesting-code-review
+    - dogfood
+    - simplify-code
+    - test-driven-development
+    - spike
+    - plan
+    - hermes-agent-skill-authoring
+    - inspecting-hermes-desktop-dom
+    - github-pr-workflow
+    - github-code-review
+    - github-issues
+    - github-repo-management
+    - github-auth
+    - codebase-inspection
+    - hermes-agent
+    - claude-code
+    - codex
+    - opencode
+    - computer-use
+    - evaluating-llms-harness
+    - huggingface-hub
+    - llama-cpp
+    - serving-llms-vllm
+    - weights-and-biases
+    - pdf
+    - xlsx
+  lila:
+    # ~39 design/research. research-paper-writing stays (giant-skill: leave).
+    - architecture-diagram
+    - arxiv
+    - ascii-art
+    - ascii-video
+    - baoyu-infographic
+    - blogwatcher
+    - claude-design
+    - comfyui
+    - design-md
+    - docx
+    - excalidraw
+    - grounded-citations
+    - hermes-agent
+    - hermes-agent-skill-authoring
+    - humanizer
+    - llm-wiki
+    - manim-video
+    - nano-pdf
+    - ocr-and-documents
+    - p5js
+    - pdf
+    - plan
+    - polymarket
+    - popular-web-designs
+    - powerpoint
+    - pretext
+    - requesting-code-review
+    - research-paper-writing
+    - sketch
+    - songsee
+    - songwriting-and-ai-music
+    - spike
+    - touchdesigner-mcp
+    - youtube-content
+  scout:
+    # Spawn notes only. Krew skills auto-allowed; no Nous catalog.
+    []
+  steward:
+    # Named 19 in kitting-analysis-steward.md. adversarial-gate is house.
+    # No claude-code / codex / opencode / computer-use (bash owns those).
+    - systematic-debugging
+    - python-debugpy
+    - node-inspect-debugger
+    - requesting-code-review
+    - hermes-agent
+    - plan
+    - simplify-code
+    - test-driven-development
+    - dogfood
+    - spike
+    - hermes-agent-skill-authoring
+    - inspecting-hermes-desktop-dom
+    - codebase-inspection
+    - github-code-review
+    - github-pr-workflow
+    - github-repo-management
+    - serving-llms-vllm
+    - llama-cpp
+  #
+  # hermes-agent: hermes's ESSENTIAL_SKILLS seeds it into every profile (even --no-skills ones) and strips it from
+  # any skills.disabled at read, so it cannot be turned off; listing it here records what judge really loads
+  #
+  judge:
+    - hermes-agent
+  vera:
+    # Review keep (~8; hindsight/kanban/memory are tools, not skills).
+    - hermes-agent
+    - github-code-review
+    - requesting-code-review
+    - systematic-debugging
+    - obsidian
+    - sdlc-review   # 2026-09-16: the review lane pins this on every review spawn; disabled == "degrade, not grant" on each Vera review
+  zoey:
+    # ~7 wall/comm. Synthesis added ascii-art + humanizer. computer-use stays OFF.
+    - ascii-art
+    - humanizer
+    - hermes-agent

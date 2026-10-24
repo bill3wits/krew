@@ -1,0 +1,11 @@
+# krew: Scout's monthly hunt for new team research sources (proposed[] in KREW_DOCS_DIR/TEAM-RESEARCH-SOURCES.json); the timer runs it the 1st.
+[Unit]
+Description=krew monthly scan of the team research sources
+
+[Service]
+Type=oneshot
+TimeoutStartSec=60min
+Environment=HERMES_WRITE_SAFE_ROOT=%h/Desktop/krew-deliverables:%h/.krew/memory/ms:%h/.krew/docs
+Environment=TEAM_SOURCES_V2=1
+Environment=KREW_T0_MODE=enforce
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run steward-architect-run.sh sources

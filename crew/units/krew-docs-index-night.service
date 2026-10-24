@@ -1,0 +1,11 @@
+# krew: the night's incremental docs-index rebuild (crew/scripts/nightly-krew-index.py). In the reference install
+# it is a step of the M&S night, after the test battery; here it is a oneshot the night (M&S or the window ticker)
+# starts. Off by default: KREW_NIGHTLY_INDEX=1 in crew.yaml (or M&S krew_index.enabled) turns it on.
+[Unit]
+Description=krew nightly docs-index rebuild (incremental, CPU-capped scope)
+
+[Service]
+Type=oneshot
+TimeoutStartSec=75min
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run nightly-krew-index.py
+Nice=10

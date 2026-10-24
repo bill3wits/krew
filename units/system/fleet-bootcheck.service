@@ -1,0 +1,19 @@
+# A SYSTEM unit (root installs it; krew-install.py never does). Fill in the user and the path to this repo:
+#   sudo cp units/system/fleet-bootcheck.service /etc/systemd/system/
+#   sudo cp config/fleet-bootcheck.example.json /etc/fleet-bootcheck.json   # then fill it in
+#   sudo systemctl enable fleet-bootcheck.service
+[Unit]
+Description=fleet-bootcheck: verify services returned after a deliberate reboot
+# Run late in boot. Add the services your checks name to After= so they are started first.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=<your user>
+ExecStart=/bin/bash <path to krew>/window/scripts/fleet-bootcheck
+# Give services time to come up before the check starts probing.
+ExecStartPre=/bin/sleep 20
+
+[Install]
+WantedBy=multi-user.target

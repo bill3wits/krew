@@ -1,0 +1,38 @@
+{
+ "source": "~/.local/state/house/health/battery-20260930T000855Z.json (pytest rows)",
+ "ts": "2026-09-30T00:08:50.541725+00:00",
+ "results": [
+  {
+   "group": "pytest",
+   "name": "app-rails",
+   "status": "FAIL",
+   "detail": "/srv/envs/vllm/bin/python: can't find '__main__' module in '/srv/projects/app-rails/tests' (7ms)",
+   "ms": 7,
+   "failed": []
+  },
+  {
+   "group": "pytest",
+   "name": "rail-presence",
+   "status": "FAIL",
+   "detail": "/srv/envs/vllm/bin/python: can't find '__main__' module in '/srv/projects/rail-presence/tests' (6ms)",
+   "ms": 6,
+   "failed": []
+  },
+  {
+   "group": "pytest",
+   "name": "rail-stt",
+   "status": "FAIL",
+   "detail": "/srv/envs/vllm/bin/python: can't find '__main__' module in '/srv/projects/rail-stt/tests' (7ms)",
+   "ms": 7,
+   "failed": []
+  },
+  {
+   "group": "pytest",
+   "name": "rail-voice",
+   "status": "FAIL",
+   "detail": "/srv/envs/vllm/bin/python: can't find '__main__' module in '/srv/projects/rail-voice/tests' (6ms)",
+   "ms": 6,
+   "failed": []
+  }
+ ]
+}

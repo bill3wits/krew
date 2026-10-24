@@ -1,0 +1,11 @@
+# krew: the monthly team source scan, the 1st at 03:00.
+[Unit]
+Description=Monthly team source scan (1st 03:00)
+
+[Timer]
+OnCalendar=*-*-01 03:00:00
+Persistent=false
+AccuracySec=5min
+
+[Install]
+WantedBy=timers.target
