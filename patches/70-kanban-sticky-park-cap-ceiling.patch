@@ -1,0 +1,132 @@
+# why: kanban.decompose_wip_ceiling: a board with that many cards in flight (todo/ready/running/review/triage, never the parks) is skipped by the auto-decomposer until completions bring it under; re-read every tick. Unset or 0: off.
+# tests: 
+# upstream: candidate
+# base: hermes-agent 35272ce28b29 (v0.21.4+canary.20260928T071354Z-19-g35272ce28b)
+
+diff --git a/gateway/kanban_watchers.py b/gateway/kanban_watchers.py
+index abe89a0d96..9e434ea933 100644
+--- a/gateway/kanban_watchers.py
++++ b/gateway/kanban_watchers.py
+@@ -20,6 +20,7 @@ from gateway.kanban_watchers_common import (
+     _kanban_dispatch_allowed,
+     _release_singleton_lock,
+     _resolve_auto_decompose_settings,
++    _resolve_decompose_wip_ceiling,
+     _gc_retention_days,
+     _to_thread_process_service,
+     logger,
+@@ -298,7 +299,8 @@ class GatewayKanbanWatchersMixin:
+                     _ad_enabled, _ad_per_tick = _resolve_auto_decompose_settings(_load_config)
+                     # See #49638.
+                     if _ad_enabled:
+-                        await _to_thread_process_service(dispatcher.auto_decompose_tick, _ad_per_tick)
++                        await _to_thread_process_service(
++                            dispatcher.auto_decompose_tick, _ad_per_tick, _resolve_decompose_wip_ceiling(_load_config))
+                     results = await _to_thread_process_service(dispatcher.tick_once)
+                     any_spawned = _log_spawn_results(results)
+                     ready_pending = await _to_thread_process_service(dispatcher.ready_nonempty)
+diff --git a/gateway/kanban_watchers_common.py b/gateway/kanban_watchers_common.py
+index eb0bca88a4..6188c660ef 100644
+--- a/gateway/kanban_watchers_common.py
++++ b/gateway/kanban_watchers_common.py
+@@ -63,6 +63,37 @@ def _positive_int_setting(kanban_cfg: dict, key: str) -> Optional[int]:
+     return value
+ 
+ 
++def _resolve_decompose_wip_ceiling(load_config: Callable[[], Any]) -> Optional[int]:
++    """``kanban.decompose_wip_ceiling``: cards in flight on a board at or above which the
++    auto-decomposer stops minting children (krew patch 70, 2026-09-16). Unset / 0 / invalid
++    means no ceiling. Re-read every tick, like the toggle below.
++
++    Why: with three worker slots (~15 completions/h) one board carried 315 open cards and 218 of
++    a day's 479 new cards came from the decomposer. It resumes by itself once completions bring
++    the count back under the line.
++    """
++    try:
++        cfg = load_config()
++    except Exception:
++        return None
++    kcfg = cfg.get("kanban", {}) if isinstance(cfg, dict) else {}
++    try:
++        ceiling = int(kcfg.get("decompose_wip_ceiling", 0) or 0)
++    except (TypeError, ValueError):
++        return None
++    return ceiling if ceiling > 0 else None
++
++
++# Work IN FLIGHT: never the parks (blocked / scheduled), which do not compete for a slot.
++_OPEN_STATUSES = ("todo", "ready", "running", "review", "triage")
++
++
++def _count_open_cards(conn) -> int:
++    marks = ",".join("?" for _ in _OPEN_STATUSES)
++    row = conn.execute(f"SELECT COUNT(*) FROM tasks WHERE status IN ({marks})", _OPEN_STATUSES).fetchone()
++    return int(row[0] if row else 0)
++
++
+ def _resolve_auto_decompose_settings(load_config: Callable[[], Any]) -> "tuple[bool, int]":
+     """Live (enabled, per_tick) auto-decompose settings, re-read every dispatcher tick.
+ 
+diff --git a/gateway/kanban_watchers_dispatcher.py b/gateway/kanban_watchers_dispatcher.py
+index 8c58fcb60c..5798cd1273 100644
+--- a/gateway/kanban_watchers_dispatcher.py
++++ b/gateway/kanban_watchers_dispatcher.py
+@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass
+ from pathlib import Path
+ from typing import Any, Optional
+ 
+-from gateway.kanban_watchers_common import _board_slugs, _positive_int_setting, logger
++from gateway.kanban_watchers_common import _board_slugs, _count_open_cards, _positive_int_setting, logger
+ 
+ 
+ def _kbc():
+@@ -235,11 +235,39 @@ class _KanbanDispatcher:
+                         conn.close()
+         return False
+ 
+-    def auto_decompose_tick(self, auto_decompose_per_tick: int) -> int:
++    def _over_wip_ceiling(self, slug: str, wip_ceiling: Optional[int]) -> bool:
++        """True while ``slug`` carries at least ``wip_ceiling`` cards in flight (krew patch 70).
++        Logged once when the hold engages and once when it clears; an unreadable board is not held."""
++        if wip_ceiling is None:
++            return False
++        held = self.__dict__.setdefault("_wip_held", set())
++        conn = None
++        try:
++            conn = _kbc().connect(board=slug)
++            open_n = _count_open_cards(conn)
++        except Exception:
++            return False
++        finally:
++            if conn is not None:
++                with contextlib.suppress(Exception):
++                    conn.close()
++        if open_n >= wip_ceiling:
++            if slug not in held:
++                held.add(slug)
++                logger.info("kanban auto-decompose [%s]: %d open cards >= decompose_wip_ceiling %d; "
++                            "holding decomposition until completions bring it under", slug, open_n, wip_ceiling)
++            return True
++        if slug in held:
++            held.discard(slug)
++            logger.info("kanban auto-decompose [%s]: %d open cards < ceiling %d; resuming", slug, open_n, wip_ceiling)
++        return False
++
++    def auto_decompose_tick(self, auto_decompose_per_tick: int, wip_ceiling: Optional[int] = None) -> int:
+         """Auto-decompose up to N triage tasks across all boards into ready workgraphs.
+ 
+         Runs before dispatch fans out; the per-tick cap keeps a bulk triage
+         load from burst-spending the aux LLM. Returns the number decomposed.
++        A board at or over ``wip_ceiling`` (``kanban.decompose_wip_ceiling``) is skipped this tick.
+         """
+         try:
+             from hermes_cli import kanban_decompose as _decomp
+@@ -252,6 +280,8 @@ class _KanbanDispatcher:
+             for slug in self._board_slugs():
+                 if attempted >= auto_decompose_per_tick:
+                     break
++                if self._over_wip_ceiling(slug, wip_ceiling):
++                    continue
+                 # Pin the board via env for the call: the decomposer connects
+                 # with no board kwarg (same pattern as the dashboard specify endpoint).
+                 prev_env = os.environ.get("HERMES_KANBAN_BOARD")

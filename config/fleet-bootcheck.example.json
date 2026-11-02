@@ -1,0 +1,78 @@
+{
+ "_doc": "fleet-bootcheck's settings: copy to /etc/fleet-bootcheck.json (or point FLEET_BOOTCHECK_CONFIG at it). hermes: the hermes launcher; notify: a command that takes one message argument; logdir + breadcrumb: the file a deliberate reboot leaves ({\"packages\": ...}); live_switch: a file that arms checks_live (absent = checks_legacy). Check kinds: http (url), port (TCP LISTEN), unit (system manager), user_unit (the unit's user manager, plus an optional health url); tries and nap per check. Empty checks = it confirms nothing and says 'All 0 services green'. `_reference_install` is the machine krew was built on, verbatim except the home path, an agent name and a dev-box port (placeholders in <>); nothing reads it.",
+ "hermes": "",
+ "notify": "echo",
+ "logdir": "",
+ "breadcrumb": "reboot-in-progress.json",
+ "live_switch": "",
+ "checks_live": [],
+ "checks_legacy": [],
+ "_reference_install": {
+  "hermes": "/home/<you>/.local/bin/hermes",
+  "notify": "/usr/local/bin/fleet-notify",
+  "logdir": "/home/<you>/agents/network/state",
+  "breadcrumb": "reboot-in-progress.json",
+  "live_switch": "/home/<you>/.hermes/fleet-bootcheck-live.on",
+  "checks_live": [
+   {
+    "name": "ops",
+    "kind": "http",
+    "url": "http://localhost:8000/v1/models",
+    "tries": 24,
+    "nap": 15
+   },
+   {
+    "name": "hermes-gateway",
+    "kind": "user_unit",
+    "unit": "hermes-gateway.service",
+    "url": "http://127.0.0.1:<api port>/health",
+    "tries": 24,
+    "nap": 5
+   },
+   {
+    "name": "hermes-dashboard",
+    "kind": "port",
+    "port": 9119,
+    "tries": 8,
+    "nap": 5
+   }
+  ],
+  "checks_legacy": [
+   {
+    "name": "<agent>",
+    "kind": "http",
+    "url": "http://localhost:8000/v1/models",
+    "tries": 24,
+    "nap": 15
+   },
+   {
+    "name": "supertonic",
+    "kind": "port",
+    "port": 7788,
+    "tries": 8,
+    "nap": 5
+   },
+   {
+    "name": "hermes-gateway",
+    "kind": "unit",
+    "unit": "hermes-gateway.service",
+    "tries": 8,
+    "nap": 5
+   },
+   {
+    "name": "hermes-dashboard",
+    "kind": "port",
+    "port": 9119,
+    "tries": 8,
+    "nap": 5
+   },
+   {
+    "name": "oracle",
+    "kind": "unit",
+    "unit": "oracle.service",
+    "tries": 8,
+    "nap": 5
+   }
+  ]
+ }
+}

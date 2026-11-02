@@ -1,0 +1,46 @@
+{
+  "schema": "krew-brains/1",
+  "_about": "The crew's two brains as named presets (the User 2026-10-10). `krew-install.py init --brains <preset>` writes them: Crissa (the front door) on `ops`, every other profile (the default profile's dispatcher, Ada and her decomposer, the workers) on `crew`. --endpoint / --model lay one custom endpoint over both brains. No placeholder model: tests/test_brain_presets.py holds every preset to real names. Keys are the user's, given at install (--api-key, or the preset's key variable in the environment), kept only in $HERMES_HOME/.env.",
+  "default": "engines",
+  "presets": {
+    "engines": {
+      "about": "This box's own engines, as the reference install runs them: two vLLM servers on loopback, no key (krew's engines/: `ops` on 8000, `crew` on 8005).",
+      "ops": {
+        "base_url": "http://127.0.0.1:8000/v1",
+        "model": "ops",
+        "key_env": ""
+      },
+      "crew": {
+        "base_url": "http://127.0.0.1:8005/v1",
+        "model": "crew",
+        "key_env": ""
+      }
+    },
+    "xai": {
+      "about": "A machine with no GPU: xAI's OpenAI-compatible API for both brains. grok-4.7 is the model xAI's docs recommend for everything but audio, image and video (https://docs.x.ai/docs/models, checked 2026-10-10). The key is yours: `--api-key` at install (or XAI_API_KEY in the environment), kept only in $HERMES_HOME/.env.",
+      "ops": {
+        "base_url": "https://api.x.ai/v1",
+        "model": "grok-4.7",
+        "key_env": "XAI_API_KEY"
+      },
+      "crew": {
+        "base_url": "https://api.x.ai/v1",
+        "model": "grok-4.7",
+        "key_env": "XAI_API_KEY"
+      }
+    },
+    "claude": {
+      "about": "A machine with no GPU: Anthropic's OpenAI-compatible endpoint for both brains (https://api.anthropic.com/v1, the key sent as `Authorization: Bearer`; https://platform.claude.com/docs/en/api/openai-sdk, checked 2026-10-10). claude-fable-5-1 is the most capable model the models overview lists that day; claude-opus-5-5 is the docs' starting point for most work, claude-sonnet-5-5 faster, claude-haiku-5-5 the fastest and cheapest (--model to pick one). Anthropic calls this layer meant for testing and comparison; its limits: temperature below 1 is a 400 on Claude 4.7 and later, forced tool_choice is a 400 on Opus 5.5 / Sonnet 5.5 / Fable 5.1, prompt caching and strict schemas are not supported, a key with access to several workspaces needs an anthropic-workspace-id header. The key is yours: --api-key or ANTHROPIC_API_KEY at install.",
+      "ops": {
+        "base_url": "https://api.anthropic.com/v1",
+        "model": "claude-fable-5-1",
+        "key_env": "ANTHROPIC_API_KEY"
+      },
+      "crew": {
+        "base_url": "https://api.anthropic.com/v1",
+        "model": "claude-fable-5-1",
+        "key_env": "ANTHROPIC_API_KEY"
+      }
+    }
+  }
+}

@@ -1,0 +1,9 @@
+# krew: archive closed done cards + hermes kanban gc on the standing board. No timer of its own: the window
+# ticker (krew's off-hours scheduler) starts it when the night opens. Run it by hand any time: it is idempotent.
+[Unit]
+Description=krew kanban day-close (archive closed done cards, gc the board)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run kanban-day-close.py
+Nice=10

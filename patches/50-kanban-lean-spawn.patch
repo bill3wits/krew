@@ -1,0 +1,27 @@
+# why: A dispatcher-spawned worker whose profile lists kanban_lean keeps the lean kit (krew-kanban-lean): upstream appends the full built-in kanban toolset for every worker.
+# tests: 
+# upstream: candidate
+# base: hermes-agent 35272ce28b29 (v0.21.4+canary.20260928T071354Z-19-g35272ce28b)
+
+diff --git a/model_tools.py b/model_tools.py
+index 9a068d5a1b..83e141dc30 100644
+--- a/model_tools.py
++++ b/model_tools.py
+@@ -318,9 +318,15 @@ def _select_tool_names(enabled_toolsets: Optional[List[str]], disabled_toolsets:
+         enabled = list(enabled_toolsets)
+         # Dispatcher-spawned kanban workers always get the lifecycle handoff
+         # tools, even when the assignee profile restricts its chat toolsets.
++        # A profile that lists ``kanban_lean`` (a plugin toolset carrying the
++        # worker's own verbs) already HAS that surface: appending the built-in
++        # ``kanban`` on top undoes the lean kit (krew patch 50).
+         if (os.environ.get("HERMES_KANBAN_TASK") and not _is_delegated_child_context()
+-                and _is_dispatcher_owned_worker() and "kanban" not in enabled):
+-            enabled.append("kanban")
++                and _is_dispatcher_owned_worker()):
++            if "kanban_lean" in enabled and validate_toolset("kanban_lean"):
++                enabled = [t for t in enabled if t != "kanban"]
++            elif "kanban" not in enabled:
++                enabled.append("kanban")
+         _apply_toolset_selection(tools, enabled, quiet_mode, disable=False)
+     else:
+         from toolsets import get_all_toolsets

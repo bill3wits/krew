@@ -1,0 +1,76 @@
+{
+  "_about": "Lane B of the krew lift: the security rails (T0 gate, why-before-fix, test sandbox, prodgate, prod-guard, the hook writer) and the Janitor (unit registry, watch, baseline, gate hold/strikes, pin check, crystal check, venv generations, unit-event log) with their settings examples and systemd templates. imports.test_only: the lifted T0 tests read YAML through PyYAML or ruamel and import rails/why_before_fix.py; the Janitor tests import the janitor/ modules (janitor_env puts janitor/ on sys.path).",
+  "packages": {
+    "rails": {
+      "kind": "scripts",
+      "about": "Security rails: installed to $KREW_HOME/rails by krew-install; the T0 gate is wired into each profile with --hooks.",
+      "files": [
+        "rails/*.py",
+        "rails/prodgate-checklist.md"
+      ],
+      "optional_imports": [
+        "hermes_yaml",
+        "yaml",
+        "ruamel"
+      ]
+    },
+    "janitor": {
+      "kind": "scripts",
+      "about": "The Janitor: installed to $KREW_HOME/janitor; krew-janitor.timer runs a tick every 5 minutes, report-only until armed. The code canary (janitor/code_canary.py + krew-code-canary.py; machine values under `code_canary:` in janitor.yaml) ships beside it. Optional helpers (reboot_comment, audio_orphans, hermes_endpoint, hermes_topology, ms_settings) load from `paths.lib_dirs` in janitor.yaml when present; absent, their tick reports skipped. Whether Crissa is live (its player answers /v1/state) comes from krew's crew/lib/crissa_watch.py, loaded by path; absent, the Janitor reads krew-only.",
+      "files": [
+        "janitor/*"
+      ],
+      "optional_imports": [
+        "hermes_yaml",
+        "yaml",
+        "ruamel",
+        "reboot_comment",
+        "audio_orphans",
+        "hermes_endpoint",
+        "hermes_topology",
+        "ms_settings",
+        "crissa_watch"
+      ]
+    },
+    "rails-config": {
+      "kind": "config",
+      "about": "Settings examples for the rails and the Janitor (copied to $KREW_HOME as *.example.yaml and, where missing, as the live file).",
+      "files": [
+        "config/tier0.example.yaml",
+        "config/rails.example.yaml",
+        "config/janitor.example.yaml"
+      ]
+    },
+    "systemd-units": {
+      "kind": "config",
+      "about": "systemd unit templates (@KREW_HOME@ / @PYTHON@ filled by krew-install into $KREW_HOME/systemd/user) and drop-in examples.",
+      "files": [
+        "systemd/user/*"
+      ]
+    },
+    "rails-install": {
+      "kind": "scripts",
+      "about": "krew-install's rails + Janitor step. Imports rails/krew_hooks.py from the repo it runs in (krew_hooks is optional: --hooks only).",
+      "files": [
+        "scripts/krew_install_rails.py"
+      ],
+      "optional_imports": [
+        "krew_hooks"
+      ]
+    }
+  },
+  "imports": {
+    "test_only": [
+      "yaml",
+      "ruamel",
+      "why_before_fix",
+      "gate_hold",
+      "gate_strikes",
+      "krew_baseline",
+      "krew_registry",
+      "krew_venv_gen",
+      "krew_watch",
+      "code_canary"
+    ]
+  }
+}

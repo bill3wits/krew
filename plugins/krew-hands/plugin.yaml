@@ -1,0 +1,19 @@
+name: krew-hands
+version: 1.1.0
+description: >
+  One voice tool: hands. The front door's gateway stays zippy (no SKILL.md, no CUA/browser
+  schemas). The handler runs her CLI kit through the shipped child
+  ($KREW_HOME/crew/scripts/crissa-hands.py: `hermes -p crissa --cli`) and returns the short answer;
+  with no child installed, an in-plugin one-shot (hands.py) does the job. Not a krew spawn. Not
+  delegate_task. Also declares the `skill_read` toolset (skill_view only) and, with KREW_HANDS_DOCS=1,
+  krew_docs from the sibling krew-docs plugin. Settings: `hands:` in $KREW_HOME/krew.yaml.
+author: krew
+entry: __init__.py
+kind: standalone
+requires_hermes: ">=0.21.4"
+requires_env: []
+provides:
+  - toolset: hands
+    tools: [hands]
+requires:
+  - hermes: "hermes -p crissa --cli"

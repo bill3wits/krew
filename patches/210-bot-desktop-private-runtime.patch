@@ -1,0 +1,37 @@
+# why: A Bot Desktop gets a PRIVATE XDG_RUNTIME_DIR inside its profile state dir, and stale FUSE mounts there are dropped at start. Inherited, the login session's runtime dir was where the desktop's gvfsd-fuse and document portal mounted on top of the human's own; a killed desktop left them dead and broke the human's document portal.
+# tests: tests/tools/test_bot_desktop_launcher_seed.py tests/tools/test_bot_desktop_launcher_xvnc.py tests/tools/test_bot_desktop_runtime.py
+# upstream: candidate
+# base: hermes-agent 35272ce28b29 (v0.21.4+canary.20260928T071354Z-19-g35272ce28b)
+
+diff --git a/tools/bot_desktop/launcher.sh b/tools/bot_desktop/launcher.sh
+index 93953fa39c..fa4c291ffc 100755
+--- a/tools/bot_desktop/launcher.sh
++++ b/tools/bot_desktop/launcher.sh
+@@ -30,6 +30,16 @@ export XDG_DATA_HOME="${HERMES_BD_DATA_HOME:-$HERMES_BD_CONFIG_HOME/.local-share
+ export XDG_SESSION_TYPE=x11 XDG_CURRENT_DESKTOP=XFCE
+ export GDK_BACKEND=x11 QT_QPA_PLATFORM=xcb NO_AT_BRIDGE=1 GTK_A11Y=none
+ export LANG="${LANG:-C.UTF-8}"
++# Krew patch 210 (2026-10-04): a PRIVATE runtime dir inside this profile's state dir. Inherited, the
++# login session's /run/user/<uid> was where this desktop's gvfsd-fuse and xdg-document-portal mounted their FUSE
++# trees (gvfs, doc) - ON TOP of the human's own; when systemd SIGKILLed the desktop those mounts were left dead
++# ("Transport endpoint is not connected") and the human's own document portal failed to start. Published in the
++# env file, so every spawn for this profile lands in it too. Stale FUSE mounts from a killed run are dropped first.
++export XDG_RUNTIME_DIR="${HERMES_BD_RUNTIME_DIR:-$(dirname "$HERMES_BD_ENV_FILE")/runtime}"
++mkdir -p "$XDG_RUNTIME_DIR" && chmod 700 "$XDG_RUNTIME_DIR"
++while read -r _ mnt _; do
++  case "$mnt" in "$XDG_RUNTIME_DIR"/*) fusermount3 -u -z "$mnt" 2>/dev/null || fusermount -u -z "$mnt" 2>/dev/null || true ;; esac
++done < /proc/mounts
+ # Inheriting a login session's bus/session manager yields "Another session manager is already
+ # running" / "Unable to contact settings server".
+ unset SESSION_MANAGER DBUS_SESSION_BUS_ADDRESS DISPLAY XAUTHORITY WAYLAND_DISPLAY
+@@ -284,8 +294,8 @@ xset -display "$DISPLAY" s off -dpms s noblank 2>/dev/null || true
+ dbus-run-session -- bash -c '
+   set -e
+   umask 077
+-  printf "DISPLAY=%s\nXAUTHORITY=%s\nDBUS_SESSION_BUS_ADDRESS=%s\nXDG_CONFIG_HOME=%s\nXDG_CACHE_HOME=%s\nXDG_DATA_HOME=%s\n" \
+-    "$DISPLAY" "$XAUTHORITY" "$DBUS_SESSION_BUS_ADDRESS" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$XDG_DATA_HOME" \
++  printf "DISPLAY=%s\nXAUTHORITY=%s\nDBUS_SESSION_BUS_ADDRESS=%s\nXDG_CONFIG_HOME=%s\nXDG_CACHE_HOME=%s\nXDG_DATA_HOME=%s\nXDG_RUNTIME_DIR=%s\n" \
++    "$DISPLAY" "$XAUTHORITY" "$DBUS_SESSION_BUS_ADDRESS" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$XDG_DATA_HOME" "$XDG_RUNTIME_DIR" \
+     > "$HERMES_BD_ENV_FILE.tmp" && mv -f "$HERMES_BD_ENV_FILE.tmp" "$HERMES_BD_ENV_FILE"
+   xfsettingsd --sm-client-disable --daemon 2>/dev/null || true
+   xfwm4 --compositor=off --sm-client-disable &

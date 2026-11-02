@@ -1,0 +1,10 @@
+[Unit]
+Description=krew Janitor's watcher every 10 min (off switch: ~/.hermes/janitor-watch.off)
+
+[Timer]
+OnBootSec=8min
+OnUnitActiveSec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,21 @@
+# krew: the Decide sheet's privacy watch. Long-running: while the Wall shows his Decide sheet
+# (plugins/team-crissa/crissa-decide-list.py show), it takes the sheet down the moment he leaves, his authentication
+# drops, the room goes Busy, or a second body walks in (a guest, an unknown, an uncertain read), and drops the yes he
+# gave for this sitting. The x key and the sheet's TTL are only backstops: this is the one that runs. With no Wall
+# installed it reads nothing and stays quiet. Off: touch ~/.krew/krew-decide-sheet-watch.off (krew-crew-run's
+# switch). crew/scripts/krew-decide-sheet-watch.py finds the plugin in the Hermes home it was installed into.
+[Unit]
+Description=krew Decide sheet watch (the sheet comes down when he leaves or a second body enters)
+After=network.target
+
+[Service]
+Type=simple
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run krew-decide-sheet-watch.py
+Restart=always
+RestartSec=10
+Nice=10
+MemoryMax=256M
+
+[Install]
+WantedBy=default.target

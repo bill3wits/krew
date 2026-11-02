@@ -1,0 +1,11 @@
+# krew: the reference install fired this once, 14:30 / 02:30 the day after arming (OnCalendar=<date>); krew's
+# timer is weekly, Monday 08:30, so a report-only rule's hits are reviewed before any enforce decision.
+[Unit]
+Description=Weekly T0 crissa-kit report-only review (one shot on the reference install)
+
+[Timer]
+OnCalendar=Mon *-*-* 08:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

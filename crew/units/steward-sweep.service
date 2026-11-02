@@ -1,0 +1,10 @@
+# krew: Steward's hourly board sweep. Files one goal card for Steward with the open cards, diagnostics and the
+# blocking parks; Steward archives escalations, stops churn and escalates to Crissa. The RAM guard skips a tick when
+# the dispatcher gateway is near its memory cap (SWEEP_RAM_UNIT, default hermes-gateway.service).
+[Unit]
+Description=krew steward sweep (stewardship card with stuck-card diagnostics)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run steward-sweep
+TimeoutStartSec=2100

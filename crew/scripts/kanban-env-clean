@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+#
+#
+# The dispatcher hands every worker HERMES_KANBAN_DB / _BOARD / _WORKSPACES_ROOT pointing at
+# its LIVE board. A worker's `pytest tests/hermes_cli -k kanban` filed fixture cards on the
+# krew board at 12:51 (`t1`, fake pid 12345) and dispatched real cards with the fake pid.
+# Dropping HERMES_KANBAN_* was NOT enough: at 23:36-23:41 three runs made through the first
+# version of this script still wrote a0-a4/b0-b2 (test_kanban_per_profile_cap: it purges
+# hermes_cli from sys.modules, so hermes's own write guard patches a module no longer used).
+# So the command now gets its own HOME with HERMES_HOME and HERMES_KANBAN_HOME inside it, and
+#
+#   scripts/kanban-env-clean .venv/bin/python -m pytest tests/hermes_cli -q
+[ $# -gt 0 ] || { echo "usage: kanban-env-clean <command> [args...]" >&2; exit 2; }
+# Tests only. A hermes ENTRY POINT under a scratch HERMES_HOME provisions it and can rewrite the LIVE
+#
+# conftest never reaches that path, the CLI does.
+case "$(basename -- "$1")" in hermes|hermes-acp|hermes-agent)
+  echo "kanban-env-clean: refusing a hermes entry point under a scratch home (it can rewrite the live launcher)" >&2; exit 3 ;; esac
+for a in "$@"; do case "$a" in hermes_cli|hermes_cli.main|hermes_bootstrap|*hermes_bootstrap*)
+  echo "kanban-env-clean: refusing a hermes entry point under a scratch home (it can rewrite the live launcher)" >&2; exit 3 ;; esac; done
+for name in $(compgen -e); do
+  case "$name" in HERMES_KANBAN_*|HERMES_REAL_HOME) unset "$name" ;; esac
+done
+real_home="${HOME:-$(getent passwd "$(id -u)" | cut -d: -f6)}"
+: "${UV_CACHE_DIR:=$real_home/.cache/uv}"
+: "${XDG_CACHE_HOME:=$real_home/.cache}"
+export UV_CACHE_DIR XDG_CACHE_HOME
+if [ "${KANBAN_ENV_CLEAN_HOME:-1}" != "0" ]; then
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/kanban-env-clean.XXXXXX")"
+  mkdir -p "$sandbox/.hermes"
+  export HOME="$sandbox" HERMES_HOME="$sandbox/.hermes" HERMES_KANBAN_HOME="$sandbox/.hermes"
+fi
+exec "$@"

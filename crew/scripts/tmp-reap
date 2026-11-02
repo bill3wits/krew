@@ -1,0 +1,166 @@
+#!/usr/bin/env python3
+"""tmp-reap — the house's one way to delete a tree under /tmp.
+
+  tmp-reap [--dry-run] [--json] PATH [PATH ...]
+
+
+`find -delete` to a worker clearing three stale test trees; it wrote its own unlink script to
+get past the refusal, and in that same minute the hermes venvs lost their .py files. A refused
+act is not to be rebuilt by hand, so the crew needs a sanctioned verb that is safe by construction:
+
+  * every PATH must resolve to a directory strictly INSIDE /tmp — never /tmp itself, and no
+    symlink anywhere in the path (the path you name is the path that is deleted);
+  * it never follows a directory symlink: a symlink is unlinked as a link, its target is
+    never entered (shutil.rmtree's fd-based walk, which refuses to descend a link);
+  * it never crosses a mount: a directory on another filesystem is left whole and reported;
+  * it refuses a tree any process still holds (cwd, root, or an open fd under it);
+  * it reports what it removed (files, links, dirs, bytes) and /tmp's inodes before and after.
+
+Exit: 0 all done · 2 a PATH was refused (outside /tmp, a symlink, held, missing) · 1 a delete
+error. --dry-run counts and checks, deletes nothing. Refusals are per PATH: the others proceed.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import stat
+import sys
+
+ROOT = os.environ.get("KREW_TMP_REAP_ROOT", "/tmp")   # a test seam; the verb is /tmp only
+
+
+def refuse_reason(path: str) -> str | None:
+    """Why this PATH may not be reaped, or None. Checked on the path as NAMED: an
+    abspath that differs from its realpath has a symlink in it and is refused."""
+    ap = os.path.abspath(path)
+    root = os.path.realpath(ROOT)
+    if os.path.realpath(ap) != ap:
+        return "a symlink is in the path — name the real directory"
+    if not ap.startswith(root + os.sep) or ap == root:
+        return f"not strictly inside {root}"
+    try:
+        st = os.lstat(ap)
+    except FileNotFoundError:
+        return "not there"
+    if not stat.S_ISDIR(st.st_mode):
+        return "not a directory"
+    return None
+
+
+def holders(path: str) -> list[str]:
+    """Processes whose cwd, root or an open fd sits under path."""
+    hits = []
+    pref = path.rstrip("/") + "/"
+    me = str(os.getpid())
+    for pid in os.listdir("/proc"):
+        if not pid.isdigit() or pid == me:
+            continue
+        try:
+            for link in ("cwd", "root"):
+                t = os.readlink(f"/proc/{pid}/{link}")
+                if t == path or t.startswith(pref):
+                    raise StopIteration(f"{pid} {link}")
+            for fd in os.listdir(f"/proc/{pid}/fd"):
+                try:
+                    t = os.readlink(f"/proc/{pid}/fd/{fd}")
+                except OSError:
+                    continue
+                if t == path or t.startswith(pref):
+                    raise StopIteration(f"{pid} fd{fd}")
+        except StopIteration as hit:
+            hits.append(str(hit))
+        except OSError:
+            continue
+    return hits
+
+
+def survey(path: str) -> dict:
+    """Count what the tree holds WITHOUT following a link or leaving the filesystem."""
+    dev = os.lstat(path).st_dev
+    out = {"files": 0, "links": 0, "dirs": 0, "bytes": 0, "other_fs": []}
+    for dirpath, dirnames, filenames in os.walk(path, followlinks=False):
+        keep = []
+        for d in dirnames:
+            full = os.path.join(dirpath, d)
+            st = os.lstat(full)
+            if stat.S_ISLNK(st.st_mode):
+                out["links"] += 1                 # os.walk lists a dir-symlink here; never entered
+            elif st.st_dev != dev:
+                out["other_fs"].append(full)      # a mount inside the tree: leave it whole
+            else:
+                out["dirs"] += 1
+                keep.append(d)
+        dirnames[:] = keep
+        for f in filenames:
+            st = os.lstat(os.path.join(dirpath, f))
+            if stat.S_ISLNK(st.st_mode):
+                out["links"] += 1
+            else:
+                out["files"] += 1
+                out["bytes"] += st.st_size
+    return out
+
+
+def inodes() -> dict:
+    s = os.statvfs(os.path.realpath(ROOT))
+    return {"used": s.f_files - s.f_ffree, "free": s.f_ffree}
+
+
+def reap(path: str, dry: bool) -> dict:
+    why = refuse_reason(path)
+    if why:
+        return {"path": path, "status": "refused", "why": why}
+    ap = os.path.abspath(path)
+    held = holders(ap)
+    if held:
+        return {"path": ap, "status": "refused", "why": "held by " + ", ".join(held[:6])}
+    s = survey(ap)
+    if s["other_fs"]:
+        return {"path": ap, "status": "refused", "why": "another filesystem is mounted inside",
+                "mounts": s["other_fs"][:6], **{k: s[k] for k in ("files", "links", "dirs", "bytes")}}
+    if dry:
+        return {"path": ap, "status": "would-remove", **s}
+    errors: list[str] = []
+
+    def onexc(func, p, exc):                      # keep going; name every failure
+        errors.append(f"{p}: {type(exc).__name__}: {exc}"[:200])
+
+    if not shutil.rmtree.avoids_symlink_attacks:  # the fd-based walk is the whole point
+        return {"path": ap, "status": "refused", "why": "this platform's rmtree can follow links"}
+    shutil.rmtree(ap, onexc=onexc) if sys.version_info >= (3, 12) else \
+        shutil.rmtree(ap, onerror=lambda f, p, e: onexc(f, p, e[1]))
+    gone = not os.path.lexists(ap)
+    return {"path": ap, "status": "removed" if gone and not errors else "partial", **s,
+            "errors": errors[:12], "still_there": not gone}
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("paths", nargs="+")
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--json", action="store_true")
+    a = ap.parse_args(argv)
+    before = inodes()
+    results = [reap(p, a.dry_run) for p in a.paths]
+    after = inodes()
+    if a.json:
+        print(json.dumps({"results": results, "inodes_before": before, "inodes_after": after}))
+    else:
+        for r in results:
+            if r["status"] in ("refused",):
+                print(f"REFUSED {r['path']}: {r['why']}")
+                continue
+            verb = "would remove" if r["status"] == "would-remove" else r["status"]
+            print(f"{verb} {r['path']}: {r['files']} files, {r['links']} links (unlinked, never followed), "
+                  f"{r['dirs']} dirs, {r['bytes'] / 1e6:.1f} MB"
+                  + (f" — {len(r['errors'])} error(s): {r['errors'][0]}" if r.get("errors") else ""))
+        print(f"{os.path.realpath(ROOT)} inodes used {before['used']} -> {after['used']}")
+    if any(r["status"] == "partial" for r in results):
+        return 1
+    return 2 if any(r["status"] == "refused" for r in results) else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

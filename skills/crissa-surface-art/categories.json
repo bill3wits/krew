@@ -1,0 +1,30 @@
+{
+  "schema": "krew_glyph_categories/v1",
+  "updated": "2026-08-07",
+  "owners": { "catalog": "lila", "live_wall": "crissa", "surface": "grok" },
+  "figlet_herbox": {
+    "quiet": ["mini", "small", "short", "straight", "threepoint", "pepper", "digital"],
+    "slant": ["slant", "smslant", "lean", "speed"],
+    "script": ["script", "smscript", "stampatello", "rounded"],
+    "block": ["block", "doom", "big", "standard", "ogre", "puffy"],
+    "cyber": ["cybermedium", "cyberlarge", "sblood", "rev"],
+    "play": ["bubble", "whimsy", "weird", "pawp", "rectangles"],
+    "display": ["larry3d", "starwars", "univers", "roman", "nancyj"]
+  },
+  "density_languages": {
+    "robot": { "zone": "left", "seed": "examples/crissa-robot.txt" },
+    "aa": { "zone": "left", "seed": "examples/krew-aa-companion.txt", "cjk": true },
+    "portrait": { "zone": "left", "seed": "examples/companion-glyph.txt" },
+    "crane": { "zone": "either", "seed": "examples/krew-crane.txt" },
+    "hills": { "zone": "float", "seed": "examples/landscape-hills.txt" },
+    "night-figure": { "zone": "either", "seed": "examples/krew-night-figure.txt" },
+    "error-hex": { "zone": "error", "seed": "examples/krew-error-hex.txt" },
+    "open": { "zone": "left", "seed": null }
+  },
+  "render": {
+    "py": "~/.hermes/hermes-agent/venv/bin/python",
+    "max_cols": 36,
+    "max_lines_herbox": 14,
+    "helper": "scripts/render_banner.py"
+  }
+}

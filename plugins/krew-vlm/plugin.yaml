@@ -1,0 +1,13 @@
+name: krew-vlm
+version: 1.0.0
+description: >
+  One look at a render AGAINST its target: `look_compare` sends the target
+  still and the rendered still or clip to the vision brain in the same call
+  and returns a verdict with the differences. Hermes's own vision_analyze
+  and video_analyze take one file each, so a render was never seen beside
+  what it was supposed to match. Lila, Bash, Vera. Kill KREW_VLM_COMPARE=0.
+author: krew
+entry: __init__.py
+kind: standalone
+requires_env: []
+provides_tools: [look_compare]

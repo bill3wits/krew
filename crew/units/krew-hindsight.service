@@ -1,0 +1,30 @@
+# krew: opt-in (enabled by krew-install --memory, on by default in init, which installs what it needs; see crew/hindsight/README.md)
+# The Hindsight memory API the dream night writes to (loopback; the port is HINDSIGHT_API_PORT in hindsight.env). Its
+# store is krew-memory-db.service (pgvector). Embeddings run on the CPU from the model fetched at install and
+# hindsight.env sets HF_HUB_OFFLINE=1, so at run time its one outbound call is the brain (HINDSIGHT_API_LLM_BASE_URL).
+# Restart backoff, not a start limit: a crash loop becomes ~10 tries an hour and still heals itself, and an
+# outage of the LLM it uses never leaves it down (HINDSIGHT_API_SKIP_LLM_VERIFICATION=1 lets it boot without one).
+# The upgrade step runs before each start and is a no-op unless its switch file is present (see the script).
+# MemoryMax only: a MemoryHigh below it counts page cache and throttles a healthy process (the reference install
+# removed it after a pressure kill, 2026-09-22); a real runaway still dies at the Max.
+[Unit]
+Description=krew Hindsight memory API (pgvector store + local embeddings, loopback)
+Requires=krew-memory-db.service
+After=network.target krew-memory-db.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+EnvironmentFile=%h/.krew/hindsight/hindsight.env
+Environment=HINDSIGHT_BASE=%h/.krew/hindsight
+ExecStartPre=-/bin/bash %h/.krew/crew/hindsight/upgrade-0.10.2.sh
+ExecStart=%h/.krew/hindsight/.venv/bin/hindsight-api --no-access-log
+TimeoutStartSec=300
+MemoryMax=6G
+Restart=always
+RestartSec=5
+RestartSteps=8
+RestartMaxDelaySec=600
+
+[Install]
+WantedBy=default.target

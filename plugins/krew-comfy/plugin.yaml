@@ -1,0 +1,11 @@
+name: krew-comfy
+version: 0.1.0
+description: >
+  Local ComfyUI (:8188) as Hermes image_generate + video_generate.
+  Uses the workflows and weights in your ComfyUI (the Wall's render.json comfy_dir, else KREW_COMFY_ROOT, else ~/ComfyUI).
+  Refuses unless occupancy is already Render. Does not enter or leave.
+  Does not systemd-stop brains. Comfy start lives only in krew-mode.
+author: krew
+kind: backend
+requires_env: []
+provides_tools: []

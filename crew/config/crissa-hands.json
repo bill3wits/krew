@@ -1,0 +1,13 @@
+{
+  "_why": "Crissa's hands defaults, read by crew/scripts/crissa-hands.py on every job (no restart); an env var of the same switch beats this file. docs = krew_docs + the docs-first line; lessons = memory in the kit + the lesson line; cua_route = a job about her own screen wears the full kit (computer_use only while her screen check passes); turns/budget = the helper's step cap and run budget (s), both stated to the helper; search_hints = one targeted file search, and name the card id when answering about a card; parallel_board_reads = team_board show calls run in parallel (krew patch 200); docs_preload = a where/how question carries krew_docs' passages into the job; web_preload = a 'what are people saying this week' job carries this week's Hacker News stories. These are the reference install's values.",
+  "docs": true,
+  "lessons": true,
+  "cua_route": true,
+  "turns": 6,
+  "budget": 55,
+  "search_hints": true,
+  "parallel_board_reads": true,
+  "screen_errand": true,
+  "docs_preload": true,
+  "web_preload": true
+}

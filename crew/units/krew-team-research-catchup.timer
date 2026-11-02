@@ -1,0 +1,11 @@
+# krew: team research catch-up, 02:25.
+[Unit]
+Description=02:25 team research catch-up
+
+[Timer]
+OnCalendar=*-*-* 02:25:00
+Persistent=false
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

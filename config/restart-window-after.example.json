@@ -1,0 +1,15 @@
+{
+ "_doc": "After-checks: copy to $KREW_HOME/restart-window-after.json. units: unit -> {name, why, cmd, env, timeout_s, once}. Run once a unit the window restarted came back OK; each posts one RESULT line on the window's card. once = only the first window that restarts the unit. None by default.",
+ "units": {},
+ "_reference_install": {
+  "left_out": "its one row (a one-off check of a dev-box voice fix, with the owner's dated note and a dev-box path)",
+  "row_shape": [
+   "cmd",
+   "env",
+   "name",
+   "once",
+   "timeout_s",
+   "why"
+  ]
+ }
+}

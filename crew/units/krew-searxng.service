@@ -1,0 +1,23 @@
+# krew: opt-in (enabled by krew-install --search, on by default in init, which installs what it needs)
+# Web search on this machine: SearXNG at the commit crew/local-services.json pins, in its own venv, on loopback
+# (settings.yml: limiter and image proxy off, json on). Every profile's web_search goes here (SEARXNG_URL); its only
+# outbound calls are the search engines it asks. AGPL-3.0: fetched at install from upstream, never shipped in krew.
+[Unit]
+Description=krew search (SearXNG, loopback)
+After=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+Environment=SEARXNG_SETTINGS_PATH=%h/.krew/searxng/settings.yml
+Environment=PYTHONPATH=%h/.krew/searxng/src
+WorkingDirectory=%h/.krew/searxng/src
+ExecStart=%h/.krew/searxng/.venv/bin/python -m searx.webapp
+MemoryMax=1G
+Restart=always
+RestartSec=5
+RestartSteps=8
+RestartMaxDelaySec=600
+
+[Install]
+WantedBy=default.target

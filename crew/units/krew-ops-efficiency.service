@@ -1,0 +1,9 @@
+# krew: Ada's weekly ops-efficiency report (charts, then `hermes -p ada cron run ops-efficiency`); the timer runs it Sundays.
+[Unit]
+Description=krew Ada weekly ops-efficiency narrative
+
+[Service]
+Type=oneshot
+TimeoutStartSec=20min
+Environment=KREW_T0_MODE=enforce
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run steward-architect-run.sh ops

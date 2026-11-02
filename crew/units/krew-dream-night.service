@@ -1,0 +1,12 @@
+# krew: the dream night - day roll, 3-day roll, Hindsight retain/consolidate/reflect for the window's day.
+# No timer of its own: the window ticker (krew's off-hours scheduler) starts it as a closing job and writes the
+# day it closes to krew-day.env. Run it by hand any time: the pipeline is idempotent.
+[Unit]
+Description=krew dream night (day roll, 3-day roll, Hindsight retain/consolidate/reflect)
+
+[Service]
+Type=oneshot
+TimeoutStartSec=45min
+EnvironmentFile=-%h/.krew/krew-day.env
+ExecStart=/bin/sh -c 'exec /usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run krew_memory.py dream-night $${KREW_DAY:+--day $$KREW_DAY}'
+Nice=10

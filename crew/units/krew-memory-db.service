@@ -1,0 +1,23 @@
+# krew: opt-in (enabled by krew-install --memory, on by default in init, which installs what it needs)
+# The long memory's vector store: PostgreSQL 18 + pgvector from pg0 (pg0-embedded, in the Hindsight venv): user space,
+# loopback, no sudo. Its own unit, so a Hindsight restart never restarts the store and All OS Off / On name it (krew's
+# panel manifest). Port, data folder and the password made at install are in db.env (0600). The data never ships.
+[Unit]
+Description=krew memory store (embedded PostgreSQL + pgvector, loopback)
+Before=krew-hindsight.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=forking
+EnvironmentFile=%h/.krew/hindsight/db.env
+ExecStart=/bin/sh -c 'exec "$PG0_BIN" start --name "$PG0_NAME" --port "$PG0_PORT" --data-dir "$PG0_DATA" --username "$PG0_USER" --password "$PG0_PASSWORD" --database "$PG0_DATABASE" -c listen_addresses=127.0.0.1'
+ExecStop=/bin/sh -c 'exec "$PG0_BIN" stop --name "$PG0_NAME"'
+PIDFile=%h/.krew/hindsight/pgdata/postmaster.pid
+TimeoutStartSec=180
+Restart=on-failure
+RestartSec=5
+RestartSteps=8
+RestartMaxDelaySec=600
+
+[Install]
+WantedBy=default.target

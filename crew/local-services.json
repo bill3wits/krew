@@ -1,0 +1,65 @@
+{
+  "schema": "krew-local-services/1",
+  "_about": "What `krew-install.py --memory` / `--search` (both on by default in init) install, pinned (the User 2026-11-01: \"EVERYthing we run is local ... we need to ship on installation as is all local\"). Everything runs in user space under $KREW_HOME on loopback; nothing needs sudo or docker. Fetched once at install (each fetch checked against the number here); at run time the only outbound calls are the brain endpoint and SearXNG's own upstream engines. scripts/krew_install_memory.py and scripts/krew_install_search.py read this file only.",
+  "python": {
+    "_why": "The reference install runs Hindsight on CPython 3.14.7. With uv, the venv asks for `want` (uv fetches it once); without uv, the first python3 on PATH at `min` or newer.",
+    "want": "3.14",
+    "min": "3.11"
+  },
+  "hindsight": {
+    "_why": "hindsight-api 0.10.2 = the reference install (CLAUDE.md 'Hindsight is 0.10.1 ...', upgraded 10-02 by upgrade-0.10.2.sh). sqlalchemy<2.1: 2.1's bare postgresql:// is psycopg3 and hindsight migrates on psycopg2 (the four-night 15/15 rollback, docs/checkpoints/hindsight-fresh-20260928 on the reference install). torch comes from the CPU index first so a machine without a GPU never pulls the CUDA wheels (the reference venv is 6.5 GB with them).",
+    "requirements": ["hindsight-api==0.10.2", "hindsight-api-slim==0.10.2", "sqlalchemy>=2.0,<2.1"],
+    "torch": "torch==2.14.0",
+    "torch_index": "https://download.pytorch.org/whl/cpu",
+    "port": 8888,
+    "venv": "hindsight/.venv",
+    "env_file": "hindsight/hindsight.env",
+    "reranker": "rrf",
+    "llm_brain": "crew",
+    "plugin": {
+      "_why": "The Hermes plugin is vendored (MIT, crew/hindsight/plugin/hindsight/LICENSE): installed from this copy, never fetched, so Hermes's catalog fetch and its scan never run. The copy is upstream's hindsight-integrations/hermes at `sha` minus its tests/ and its README banner image (krew ships text only) (byte-checked 2026-11-01 against the reference install's catalog copy: identical but the catalog stamp). tree_sha256 = sha256 over sorted 'path\\0sha256(file)\\n' of every file but LICENSE; install refuses a copy that does not match it.",
+      "dir": "crew/hindsight/plugin/hindsight",
+      "repo": "https://github.com/vectorize-io/hindsight",
+      "path": "hindsight-integrations/hermes",
+      "sha": "176f8c2de1369f569c489b831d143b78128b5535",
+      "version": "1.0.1",
+      "dropped": ["tests/", "docs/banner.png"],
+      "tree_sha256": "608fc450546e278edae3821351fd0c017ba82fcc0e3ba03f9938e226e25f48a1",
+      "pip": ["hindsight-client==0.10.2"]
+    }
+  },
+  "vector_db": {
+    "_why": "pg0-embedded (a hindsight-api dependency) carries PostgreSQL 18.1 with pgvector 0.8.5 in its own binary: proved 2026-11-01 with no network (bwrap --unshare-net): started, CREATE EXTENSION vector -> 0.8.5, 120 MB. Its own unit, so All OS Off/On and a Hindsight restart each touch only what they name.",
+    "engine": "pg0",
+    "port": 8887,
+    "data": "hindsight/pgdata",
+    "database": "hindsight",
+    "user": "hindsight"
+  },
+  "embedding": {
+    "_why": "ONE model on disk for krew's Hindsight and the Crissa kit's knowledge index (agreed with the kit's modules/knowledge 2026-11-01): the model the reference Hindsight runs. With the kit installed its lock (kit_lock) is read first; these values are the copy krew alone uses. Hindsight loads it with SentenceTransformers (allow); the kit reads the onnx export (onnx, sha-checked), fetched too so a later kit install finds everything offline.",
+    "repo": "intfloat/multilingual-e5-small",
+    "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+    "dim": 384,
+    "prefixes": {"query": "query: ", "passage": "passage: "},
+    "hf_home": "${XDG_DATA_HOME:-~/.local/share}/crissa-models/hf",
+    "kit_lock": "modules/knowledge/locks/embedding.json",
+    "allow": ["config.json", "modules.json", "sentence_bert_config.json", "special_tokens_map.json", "tokenizer.json",
+              "tokenizer_config.json", "sentencepiece.bpe.model", "model.safetensors", "1_Pooling/config.json"],
+    "onnx": {
+      "onnx/model.onnx": "ca456c06b3a9505ddfd9131408916dd79290368331e7d76bb621f1cba6bc8665",
+      "onnx/tokenizer.json": "0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39"
+    }
+  },
+  "searxng": {
+    "_why": "SearXNG is AGPL-3.0: fetched at install from upstream at `commit` (a commit two weeks old on 2026-11-01), never vendored into krew (MIT). tarball_sha256 is GitHub's archive of that commit; tree_sha256 (sha256 over sorted 'path\\0sha256(file)\\n') is checked too, so a re-compressed archive with the same files still installs. Loopback only, limiter and image proxy off, json format on (Hermes's searxng provider asks for it).",
+    "commit": "1c10abe2d3e4ab7ddcc4e9da1a7d07dc7ca7f8f4",
+    "url": "https://github.com/searxng/searxng/archive/1c10abe2d3e4ab7ddcc4e9da1a7d07dc7ca7f8f4.tar.gz",
+    "tarball_sha256": "b323bf33e5473250288f819268d3a81f5c8ad20b44b3ddbfce4284e3cdb63cbc",
+    "tree_sha256": "f012c2242a795f879201ce04e12b1b9665f9b1c4a7f83768c41d238da2324922",
+    "port": 8890,
+    "dir": "searxng",
+    "settings": "searxng/settings.yml"
+  },
+  "units": ["krew-memory-db.service", "krew-hindsight.service", "krew-searxng.service"]
+}

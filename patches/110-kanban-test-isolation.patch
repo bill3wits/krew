@@ -1,0 +1,169 @@
+# why: Hermes tests launched from inside a dispatched kanban worker could write fixture tasks into the LIVE board and dispatch real cards with a fake pid; a hermes_cli module purge escaped the connect-level write guard and two fixtures moved HERMES_HOME but not HERMES_KANBAN_HOME. Adds a sqlite3-level guard (holds across a purge) and pins HERMES_KANBAN_HOME in both fixtures. Test-only.
+# tests: tests/hermes_cli/test_kanban_sqlite_guard.py tests/hermes_cli/test_kanban_per_profile_cap.py tests/hermes_cli/test_kanban_cli_dispatch_passthrough.py
+# upstream: candidate
+# base: hermes-agent 35272ce28b29 (v0.21.4+canary.20260928T071354Z-19-g35272ce28b)
+
+diff --git a/tests/conftest.py b/tests/conftest.py
+index 3006008d8e..681ba52411 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -670,6 +670,63 @@ def _kanban_write_guard(_hermetic_environment, monkeypatch):
+     monkeypatch.setattr(_kdbc, "connect", _guarded_connect)
+ 
+ 
++# ── Kanban write guard, below the module layer ──────────────────────────────
++# The guard above patches ``kanban_db_connect.connect`` on the module that is
++# imported when the fixture runs. A test that purges ``hermes_cli`` from
++# ``sys.modules`` and re-imports it (``test_kanban_per_profile_cap`` does, to
++# pick up a new HERMES_HOME) gets a fresh, UNGUARDED ``connect`` — observed
++# writing fixture tasks into a live board and dispatching real ones with the
++# fake spawn pid. ``sqlite3`` itself is never purged and every kanban opener
++# reads ``sqlite3.connect`` at call time, so guarding it holds across a purge.
++# Scope: paths under ``<real root>/kanban`` and ``<real root>/kanban.db`` only.
++_REAL_KANBAN_PATHS = tuple(
++    Path(os.path.normpath(str(p)))
++    for base in {_REAL_KANBAN_ROOT, Path(os.path.normpath(os.path.abspath(os.path.expanduser(str(_REAL_KANBAN_ROOT)))))}
++    for p in (base / "kanban", base / "kanban.db")
++)
++
++
++def _sqlite_target(database) -> Path | None:
++    """The filesystem path a ``sqlite3.connect`` argument names, else None."""
++    if isinstance(database, bytes):
++        database = database.decode(errors="replace")
++    database = os.fspath(database) if not isinstance(database, str) else database
++    if not database or database == ":memory:":
++        return None
++    if database.startswith("file:"):
++        from urllib.parse import unquote, urlsplit
++
++        parts = urlsplit(database)
++        raw = unquote(parts.path or parts.netloc)
++        if not raw or raw == ":memory:" or "mode=memory" in (parts.query or ""):
++            return None
++        database = raw
++    # Pure string normalisation: no filesystem call, so tests/home_io_guard.py (which
++    # counts even a resolve() under the real home as I/O) never sees the check itself.
++    return Path(os.path.normpath(os.path.abspath(os.path.expanduser(database))))
++
++
++@pytest.fixture(autouse=True)
++def _kanban_sqlite_guard(monkeypatch):
++    """Refuse any sqlite3 connection to the REAL kanban root, purge or not."""
++    _orig = sqlite3.connect
++
++    def _guarded(database, *args, **kwargs):
++        target = _sqlite_target(database)
++        if target is not None:
++            for real in _REAL_KANBAN_PATHS:
++                if target == real or real in target.parents:
++                    raise RuntimeError(
++                        f"kanban_sqlite_guard: a test opened {target}, which is "
++                        f"under the REAL kanban root ({_REAL_KANBAN_ROOT}). "
++                        f"Hermetic isolation has been bypassed (a module purge "
++                        f"escapes the connect-level guard) — refusing."
++                    )
++        return _orig(database, *args, **kwargs)
++
++    monkeypatch.setattr(sqlite3, "connect", _guarded)
++
++
+ # ── Live state.db write guard ───────────────────────────────────────────────
+ # Companion to the kanban guard above, for the MAIN state database.
+ # ``hermes_state._ensure_test_isolation`` (the single choke point every
+diff --git a/tests/hermes_cli/test_kanban_cli_dispatch_passthrough.py b/tests/hermes_cli/test_kanban_cli_dispatch_passthrough.py
+index aaf214458f..3e9eab95f2 100644
+--- a/tests/hermes_cli/test_kanban_cli_dispatch_passthrough.py
++++ b/tests/hermes_cli/test_kanban_cli_dispatch_passthrough.py
+@@ -23,6 +23,12 @@ def isolated_kanban_home(monkeypatch):
+     test_home = tempfile.mkdtemp(prefix="kanban_cli_passthrough_")
+     os.makedirs(os.path.join(test_home, "profiles", "default"), exist_ok=True)
+     monkeypatch.setenv("HERMES_HOME", test_home)
++    # The kanban root resolves HERMES_KANBAN_HOME first and is shared across profiles by
++    # design, so moving HERMES_HOME alone does not move the board: pin it here too, and
++    # drop any board pin a dispatched worker's shell carries (it named a LIVE board).
++    monkeypatch.setenv("HERMES_KANBAN_HOME", test_home)
++    for _pin in ("HERMES_KANBAN_DB", "HERMES_KANBAN_BOARD", "HERMES_KANBAN_WORKSPACES_ROOT"):
++        monkeypatch.delenv(_pin, raising=False)
+     for mod in list(sys.modules.keys()):
+         if mod.startswith("hermes_cli") or mod.startswith("hermes_state") or mod == "hermes_constants":
+             del sys.modules[mod]
+diff --git a/tests/hermes_cli/test_kanban_per_profile_cap.py b/tests/hermes_cli/test_kanban_per_profile_cap.py
+index 2741f6b34c..8fa6ca79b7 100644
+--- a/tests/hermes_cli/test_kanban_per_profile_cap.py
++++ b/tests/hermes_cli/test_kanban_per_profile_cap.py
+@@ -23,6 +23,12 @@ def isolated_kanban_home_with_profiles(monkeypatch):
+         with open(os.path.join(test_home, "profiles", prof, "config.yaml"), "w") as fh:
+             fh.write("{}\n")  # identity marker: a bare dir is not a profile
+     monkeypatch.setenv("HERMES_HOME", test_home)
++    # The kanban root resolves HERMES_KANBAN_HOME first and is shared across profiles by
++    # design, so moving HERMES_HOME alone does not move the board: pin it here too, and
++    # drop any board pin a dispatched worker's shell carries (it named a LIVE board).
++    monkeypatch.setenv("HERMES_KANBAN_HOME", test_home)
++    for _pin in ("HERMES_KANBAN_DB", "HERMES_KANBAN_BOARD", "HERMES_KANBAN_WORKSPACES_ROOT"):
++        monkeypatch.delenv(_pin, raising=False)
+     for mod in list(sys.modules.keys()):
+         if mod.startswith("hermes_cli") or mod.startswith("hermes_state") or mod == "hermes_constants":
+             del sys.modules[mod]
+diff --git a/tests/hermes_cli/test_kanban_sqlite_guard.py b/tests/hermes_cli/test_kanban_sqlite_guard.py
+new file mode 100644
+index 0000000000..23e974cc66
+--- /dev/null
++++ b/tests/hermes_cli/test_kanban_sqlite_guard.py
+@@ -0,0 +1,56 @@
++"""The kanban write guard holds across a ``hermes_cli`` module purge.
++
++``test_kanban_per_profile_cap`` purges ``hermes_cli`` from ``sys.modules`` and
++re-imports it; the connect-level guard in conftest patches the module that was
++imported when the fixture ran, so the fresh module escaped it and fixture tasks
++landed in a live board. ``_kanban_sqlite_guard`` guards ``sqlite3.connect``
++itself. Nothing here opens a real board: the guard raises before sqlite runs.
++"""
++from __future__ import annotations
++
++import sqlite3
++import sys
++from pathlib import Path
++
++import pytest
++
++
++def _real_root() -> Path:
++    for mod in list(sys.modules.values()):
++        root = getattr(mod, "_REAL_KANBAN_ROOT", None)
++        if isinstance(root, Path) and hasattr(mod, "_kanban_sqlite_guard"):
++            return root
++    pytest.skip("conftest guard not loaded")
++
++
++def test_a_connection_under_the_real_kanban_root_is_refused():
++    root = _real_root()
++    for target in (root / "kanban" / "boards" / "some-board" / "kanban.db", root / "kanban.db"):
++        with pytest.raises(RuntimeError, match="kanban_sqlite_guard"):
++            sqlite3.connect(str(target))
++        with pytest.raises(RuntimeError, match="kanban_sqlite_guard"):
++            sqlite3.connect(target.as_uri() + "?mode=ro", uri=True)
++
++
++def test_temp_and_memory_databases_are_untouched(tmp_path):
++    sqlite3.connect(":memory:").close()
++    sqlite3.connect(str(tmp_path / "kanban.db")).close()
++    sqlite3.connect("file::memory:?cache=shared", uri=True).close()
++    sqlite3.connect(tmp_path / "other.db").close()
++
++
++def test_the_guard_survives_a_hermes_cli_purge(monkeypatch, tmp_path):
++    root = _real_root()
++    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
++    for mod in list(sys.modules):
++        if mod.startswith("hermes_cli") or mod.startswith("hermes_state") or mod == "hermes_constants":
++            monkeypatch.delitem(sys.modules, mod)
++    from hermes_cli import kanban_db_connect as fresh
++
++    # The re-imported module reaches sqlite through the same (guarded) sqlite3 module.
++    assert fresh.sqlite3.connect is sqlite3.connect
++    with pytest.raises(RuntimeError, match="kanban_sqlite_guard"):
++        fresh.sqlite3.connect(str(root / "kanban.db"))
++    # Its own connect() is refused too (by whichever guard fires first).
++    with pytest.raises((RuntimeError, AssertionError)):
++        fresh.connect(root / "kanban.db")

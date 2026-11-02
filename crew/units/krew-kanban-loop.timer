@@ -1,0 +1,13 @@
+# krew: kanban-loop every 20 min. Off switch without touching units: ~/.hermes/kanban-loop.off
+[Unit]
+Description=krew kanban-loop tick every 20 min
+
+[Timer]
+OnActiveSec=10min
+OnBootSec=10min
+OnUnitActiveSec=20min
+RandomizedDelaySec=60
+Persistent=true
+
+[Install]
+WantedBy=timers.target

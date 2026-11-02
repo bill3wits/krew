@@ -1,0 +1,42 @@
+{
+  "_about": "Parity lane D (2026-10-10): the render lane and the crew measurement tools raised to copies of the reference install's files; the ones krew lacked land here.",
+  "imports": {
+    "test_only": [
+      "render_window_gate",
+      "krew_hours",
+      "render_orders",
+      "prompt_weight",
+      "hands_confirm",
+      "gpu_budget",
+      "hermes_runtime",
+      "yaml",
+      "render_window"
+    ]
+  },
+  "packages": {
+    "crew-tools": {
+      "kind": "crew",
+      "about": "The crew's measuring tools (reference install, 2026-09-30..10-03): crew-frontier.py (which tools a worker should carry: hot sent, cold behind Tool Search), crew-prefix-ab-postcheck.py (the prefix-cache A/B's post-restart check), crew-salad-fix-install.sh with the crew engine's two drop-ins under engines/crew.service.d (prefix caching + MTP off), prompt-weight.py + prompt_weight.py (prompt chars per part and tokens per turn), hands-step-cap.py + hands-kit-backtest.py (the front door's step cap re-measure), crissa-claim-check.py (her claims against the tool replies).",
+      "files": [
+        "crew/scripts/crew-frontier.py",
+        "crew/scripts/crew-prefix-ab-postcheck.py",
+        "crew/scripts/crew-salad-fix-install.sh",
+        "crew/scripts/prompt-weight.py",
+        "crew/lib/prompt_weight.py",
+        "crew/scripts/hands-step-cap.py",
+        "crew/scripts/hands-kit-backtest.py",
+        "crew/scripts/crissa-claim-check.py",
+        "engines/crew.service.d/30-prefix-cache-off.conf",
+        "engines/crew.service.d/40-mtp-off.conf"
+      ],
+      "optional_imports": [
+        "hands_confirm",
+        "prompt_weight",
+        "hermes_runtime",
+        "krew_tool_tax",
+        "yaml",
+        "krew_hermes"
+      ]
+    }
+  }
+}

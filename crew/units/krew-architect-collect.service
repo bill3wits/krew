@@ -1,0 +1,12 @@
+# krew: the architect collect bundle (no LLM): feeds, GitHub releases, search, logs and the team sources into today's
+# collect dir under KREW_MEMORY_ROOT/ms/architect-collect. The morning timer runs it; the window ticker also runs it
+# in the evening ahead of team research. A read-only GitHub token (KREW_ARCHITECT_GH_TOKEN) is optional.
+[Unit]
+Description=krew architect collect bundle (no LLM)
+After=network.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-%h/.krew/krew-day.env
+EnvironmentFile=-%h/.krew/architect-gh.env
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run steward-architect-collect.py

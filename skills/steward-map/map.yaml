@@ -1,0 +1,24 @@
+name: steward-map
+who: steward
+description: One lookup — M&S / security / architect skill, then act.
+act_column: act
+krew_rules:
+  title: from a worker OOM
+  lines:
+    - '- **Comparison checkouts go under the card''s workspace on disk, never /tmp** (/tmp is tmpfs = RAM, against the worker''s 4 GB cap): `git worktree add $HERMES_KANBAN_WORKSPACE/baseline <ref>`, and `git worktree remove` it before the card ends (`--force` + `prune` if dirty — the OOM left a 3 GB tree behind).'
+    - '- **Name the test files your change touches** — never `pytest tests/`, never a tests/ glob, never `test_krew_mode.py` together with another test file (it starts Crissa''s parked gateway).'
+rows:
+  - ask: "M&S · trend · dead upstream · pin"
+    do: "read docs/STEWARD-MS-REPORT.md and docs/MANIFEST-PROTOCOL.md"
+  - ask: "reframe · third try"
+    skill: krew-reframe
+  - ask: "kit · hermes update · tree patches"
+    do: "docs/KANBAN-AND-HERMES-PINS.md; hermes-tree.py status"
+  - ask: "search · what is the latest"
+    do: "web_search / search — those schemas stay on the belt"
+where:
+  - "M&S: `~/.krew/memory/ms/`"
+  - "Repo: `~/.krew/crew/`"
+  - "Board: `~/.hermes/kanban/boards/<today>/`"
+rule: >
+  One lookup, then act. Terminal and file stay on the belt.

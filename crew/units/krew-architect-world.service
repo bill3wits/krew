@@ -1,0 +1,13 @@
+# krew: Scout's world note from the collect bundle (`hermes -p scout cron run architect-world`).
+# No timer of its own: the window ticker (krew's off-hours scheduler) starts it as a window job and writes the
+# day it serves to krew-day.env. Run it by hand any time.
+[Unit]
+Description=krew Scout local-AI world note
+
+[Service]
+Type=oneshot
+EnvironmentFile=-%h/.krew/krew-day.env
+TimeoutStartSec=45min
+Environment=HERMES_WRITE_SAFE_ROOT=%h/Desktop/krew-deliverables:%h/.krew/memory/ms
+Environment=KREW_T0_MODE=enforce
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run steward-architect-run.sh world

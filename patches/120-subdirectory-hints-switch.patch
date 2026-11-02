@@ -1,0 +1,28 @@
+# why: HERMES_SUBDIRECTORY_HINTS=0 switches off AGENTS.md/CLAUDE.md discovery on file reads without --ignore-rules (which also drops SOUL.md and the memory provider). One file read under a large tree can otherwise pull a whole AGENTS.md into a tool result. krew-hands sets it for its child. Default unchanged.
+# tests: 
+# upstream: candidate
+# base: hermes-agent 35272ce28b29 (v0.21.4+canary.20260928T071354Z-19-g35272ce28b)
+
+diff --git a/agent/agent_init.py b/agent/agent_init.py
+index c9c140cdf0..531be0259f 100644
+--- a/agent/agent_init.py
++++ b/agent/agent_init.py
+@@ -2297,10 +2297,17 @@ def _snapshot_primary_runtime(agent):
+         })
+ 
+ 
++def _subdirectory_hints_wanted() -> bool:
++    """A run can opt out of AGENTS.md / CLAUDE.md discovery on file reads without --ignore-rules
++    (which also drops SOUL.md and the memory provider): HERMES_SUBDIRECTORY_HINTS=0."""
++    return os.environ.get("HERMES_SUBDIRECTORY_HINTS", "1").strip().lower() not in ("0", "false", "no", "off")
++
++
+ def _init_usage_state(agent):
+     from agent.runtime_cwd import scope_terminal_cwd
+     agent._subdirectory_hints = SubdirectoryHintTracker(
+-        working_dir=scope_terminal_cwd() or None, enabled=not agent.skip_context_files)
++        working_dir=scope_terminal_cwd() or None,
++        enabled=not agent.skip_context_files and _subdirectory_hints_wanted())
+     _set_defaults(agent, _USAGE_STATE)
+ 
+ 

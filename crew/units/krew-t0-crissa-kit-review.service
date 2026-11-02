@@ -1,0 +1,10 @@
+# krew: a T0 report day's review (read-only): what the Crissa kit rules would have refused while report-only
+# (crew/scripts/t0-report-hits.py --route crissa-kit). The reference install ran it once as a dated one-shot the day
+# after arming each rule; set KREW_T0_REVIEW_SINCE ("YYYY-MM-DD HH:MM", the day the rule went report-only) in
+# ~/.krew/crew.yaml env: or a drop-in. Unset = "nothing to review", exit 0.
+[Unit]
+Description=List the T0 crissa-kit rule's report-only hits for the owner's enforce decision - read only
+
+[Service]
+Type=oneshot
+ExecStart=-/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run t0-report-hits.py --route crissa-kit --since-env KREW_T0_REVIEW_SINCE --out %h/.krew/docs/t0-crissa-kit-review.md --safe-root-db %h/.hermes/profiles/crissa/state.db

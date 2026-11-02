@@ -1,0 +1,14 @@
+name: krew-board
+version: 1.0.0
+description: >
+  The board in one tool (team_board: list, show, create, comment, unblock, complete over `hermes kanban`),
+  team_time, team_config_audit, and a kanban_show result that says each thing once. Toolset `team`.
+  Settings: `board:` in $KREW_HOME/krew.yaml.
+author: krew
+entry: __init__.py
+kind: standalone
+requires_hermes: ">=0.21.4"
+requires_env: []
+provides:
+  - toolset: team
+    tools: [team_board, team_time, team_config_audit]

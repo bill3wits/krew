@@ -1,0 +1,8 @@
+name: crissa-wall
+version: 1.0.0
+description: >
+  Crissa Wall verbs for your agent: speak in her voice, gesture, open a conversation, stop her. HTTP to the
+  player on this machine only (CRISSA_PLAYER, default http://127.0.0.1:8100); no player = Crissa not installed.
+  Also kill-search for the agent's web tools ($KREW_HOME/crissa-wall.json).
+entry: __init__.py
+provides_tools: [wall_state, wall_keys, wall_cue, wall_home, wall_comms, wall_speak, wall_ask, wall_stop]

@@ -1,0 +1,106 @@
+# why: The auto-decomposer splits ONE level: a triage card the machinery made (auto-decomposer, decomposer, a board gate, a reframe: card) or a body saying 'Not for decomposition' is promoted whole (no LLM call) and never split again, so the decomposer cannot re-split its own children into deep chains. Off: KREW_DECOMPOSE_DEPTH=0. Stacks on 70 (same files).
+# tests: 
+# upstream: candidate
+# base: hermes-agent 35272ce28b29 (v0.21.4+canary.20260928T071354Z-19-g35272ce28b)
+
+diff --git a/gateway/kanban_watchers_dispatcher.py b/gateway/kanban_watchers_dispatcher.py
+--- a/gateway/kanban_watchers_dispatcher.py
++++ b/gateway/kanban_watchers_dispatcher.py
+@@ -293,6 +293,8 @@
+                         logger.debug("kanban auto-decompose: list_triage_ids failed on board %s (%s)", slug, exc)
+                         triage_ids = []
+                     for tid in triage_ids:
++                        if self._promote_whole(_decomp, slug, tid):   # krew patch 75: no slot, no LLM
++                            continue
+                         if attempted >= auto_decompose_per_tick:
+                             break
+                         attempted += 1
+@@ -305,6 +307,28 @@
+         return successes
+ 
+     @staticmethod
++    def _promote_whole(_decomp: Any, slug: str, tid: str) -> bool:
++        """krew patch 75: a triage card the machinery made is promoted whole by the decomposer's
++        own rule without spending this tick's slot. True when this card was handled here."""
++        rule = getattr(_decomp, "decompose_depth_blocks", None)
++        if rule is None:
++            return False
++        try:
++            from hermes_cli import kanban_db as kb
++            from hermes_cli import kanban_db_connect as kbc
++            with kbc.connect_closing() as conn:
++                task = kb.get_task(conn, tid)
++            why = rule(task.created_by, task.title, task.body) if task is not None else ""
++            if not why:
++                return False
++            outcome = _decomp.promote_whole(task, why, "auto-decomposer")
++        except Exception:
++            logger.exception("kanban auto-decompose: depth check crashed on %s; left to the decomposer", tid)
++            return False
++        logger.info("kanban auto-decompose [%s]: %s %s", slug, tid, outcome.reason)
++        return True
++
++    @staticmethod
+     def _decompose_one(_decomp: Any, slug: str, tid: str) -> int:
+         """Decompose one triage task; returns 1 on success, 0 otherwise."""
+         try:
+diff --git a/hermes_cli/kanban_decompose.py b/hermes_cli/kanban_decompose.py
+--- a/hermes_cli/kanban_decompose.py
++++ b/hermes_cli/kanban_decompose.py
+@@ -18,6 +18,7 @@
+ from __future__ import annotations
+ 
+ import logging
++import os
+ import re
+ from dataclasses import dataclass
+ from typing import Optional
+@@ -300,6 +301,38 @@
+     )
+ 
+ 
++# Krew patch 75 (2026-09-28): the decomposer splits ONE level.
++# A triage card born of the machinery itself is promoted whole (the single-task path's own write,
++# no LLM call), never split again: 09-26/27 the decomposer re-split its own children (56 and 84 a
++# day) and kanban-loop reframes fed it back, giving chains six deep. Every caller goes through
++# here: the gateway's auto-decompose tick, kanban-loop's pass, a hand's `kanban decompose`.
++# Kill KREW_DECOMPOSE_DEPTH=0.
++NO_FANOUT_CREATORS = frozenset({"auto-decomposer", "decomposer", "kanban-board-gate", "ms-trail"})
++
++
++def decompose_depth_blocks(created_by: Optional[str], title: Optional[str], body: Optional[str]) -> str:
++    """Why this triage card must not be split (it is promoted whole instead), or ''."""
++    if os.environ.get("KREW_DECOMPOSE_DEPTH", "1").strip().lower() in ("0", "off", "false", "no"):
++        return ""
++    by = str(created_by or "").strip().lower()
++    if by in NO_FANOUT_CREATORS:
++        return f"created by {by}"
++    if by == "kanban-loop" and str(title or "").strip().lower().startswith("reframe:"):
++        return "a kanban-loop reframe"
++    if "not for decomposition" in str(body or "").lower():
++        return "marked Not for decomposition"
++    return ""
++
++
++def promote_whole(task: kb.Task, why: str, author: str) -> DecomposeOutcome:
++    """Move a triage card to todo as it is (``specify_triage_task``), no LLM call."""
++    with kbc.connect_closing() as conn:
++        ok = kb.specify_triage_task(conn, task.id, author=author)
++    if not ok:
++        return DecomposeOutcome(task.id, False, "task moved out of triage before promotion")
++    return DecomposeOutcome(task.id, True, f"promoted whole, not split ({why})", fanout=False)
++
++
+ def decompose_task(
+     task_id: str,
+     *,
+@@ -312,6 +345,9 @@
+     task, reason = _load_triage_task(task_id)
+     if task is None:
+         return DecomposeOutcome(task_id, False, reason)
++    depth = decompose_depth_blocks(task.created_by, task.title, task.body)     # krew patch 75
++    if depth:
++        return promote_whole(task, depth, author or _profile_author())
+ 
+     routing = _load_routing(root_assignee=task.assignee)
+     raw, reason = _call_aux(

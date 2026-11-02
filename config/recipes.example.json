@@ -1,0 +1,36 @@
+{
+  "_about": "Render recipes for krew-render. Copy to $KREW_HOME/recipes.json (or set render.recipes). One entry per ComfyUI API-format workflow in render.workflows_dir. prompt_node / image_node / size_nodes are node ids in that workflow. license is what the model's licence says; render cards read 'apache', 'mit' or 'open' as commercial-ok and 'non-commercial', 'research', 'community', 'internal' or 'cloud' as not.",
+  "recipes": [
+    {
+      "id": "still-t2i",
+      "kind": "t2i",
+      "vram_gib": 12,
+      "license": "apache-2.0",
+      "purpose": "a still from a prompt",
+      "workflow": "still_t2i",
+      "prompt_node": "6",
+      "size_nodes": ["5"]
+    },
+    {
+      "id": "still-edit",
+      "kind": "i2i",
+      "vram_gib": 16,
+      "license": "apache-2.0",
+      "purpose": "edit a still you already have",
+      "workflow": "still_edit",
+      "prompt_node": "6",
+      "image_node": "10"
+    },
+    {
+      "id": "clip-i2v",
+      "kind": "i2v",
+      "vram_gib": 20,
+      "license": "non-commercial research",
+      "purpose": "a short clip that starts from a still",
+      "workflow": "clip_i2v",
+      "prompt_node": "6",
+      "image_node": "52",
+      "size_nodes": ["50"]
+    }
+  ]
+}

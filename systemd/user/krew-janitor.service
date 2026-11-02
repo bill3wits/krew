@@ -1,0 +1,12 @@
+[Unit]
+Description=krew Janitor: one tick (unit health, crash loops, probes, metrics; restarts only when armed)
+Documentation=file://@KREW_HOME@/janitor/README.md
+After=default.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@KREW_HOME@/janitor
+# Restarts are armed by `restart.armed: true` in $KREW_HOME/janitor.yaml (or KREW_JANITOR_RESTART=1 here);
+# unarmed, the Janitor reports what it would restart and touches nothing.
+ExecStart=@PYTHON@ @KREW_HOME@/janitor/krew-janitor.py
+Nice=10

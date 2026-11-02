@@ -1,0 +1,12 @@
+[Unit]
+Description=krew restart window tick every 5 min (off switches: enabled: false in {krew_home}/restart-window.json, {krew_home}/restart-window.off)
+
+[Timer]
+OnBootSec=6min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30
+# No Persistent=true: on a monotonic-only timer it only keeps a stamp, and a restarted user manager can read that
+# stamp as "fired this boot" and never fire again.
+
+[Install]
+WantedBy=timers.target

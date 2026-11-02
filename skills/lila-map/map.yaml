@@ -1,0 +1,21 @@
+# lila-map: the designer's index. Retool = edit this file.
+name: lila-map
+who: lila
+description: One lookup, then the skill to load and design or research. Not a hands child.
+act_column: act
+rows:
+  - ask: "render · still · clip · studio"
+    skill: krew-render
+  - ask: "bring to life · wall clip"
+    skill: krew-bring-to-life
+  - ask: "third try · same failure · frame"
+    skill: krew-reframe
+  - ask: "adversarial · non-trivial"
+    skill: adversarial-gate
+  - ask: "crystal · deliverable · complete the card"
+    skill: krew-deliverable
+where:
+  - "Finished work: the deliverables folder your SOUL names (`KREW_DELIVERABLES`)"
+  - "Board: the kanban board Ada runs (`team_board`)"
+rule: >
+  One lookup, then act. The browser stays hot until a tax says otherwise.

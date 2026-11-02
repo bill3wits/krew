@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+"""krew-mode-hold-sweep: the hold sweep's second step, `krew-mode hold-sweep` (the User 2026-10-10).
+
+The reference install's hold-sweep unit runs three steps: the board gate, then its GPU mode script's `hold-sweep`
+verb (release GPU holds whose cards are gone, start what they parked), then a Wall-side pose sync (not krew's: the
+Wall pack runs its own). This is the second step, and krew ships the mode script (crew/scripts/krew-mode). The
+command is the one every krew caller runs (crew/lib/krew_mode_cmd.py: KREW_MODE_BIN, else KREW_MODE_PATH, else the
+install's $KREW_HOME/bin/krew-mode link, else the krew-mode beside this file), so the timer, render-submit,
+render-collect and the Wall's Mode row reach one switch. As on the reference install a failed sweep fails the unit;
+KREW_MODE_SWEEP_STRICT=0 reports it on stdout instead (for a mode script of your own that is not krew's).
+"""
+from __future__ import annotations
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+import krew_mode_cmd  # noqa: E402
+
+
+def command() -> list[str]:
+    return krew_mode_cmd.command()
+
+
+def main(argv: list[str]) -> int:
+    cmd = command()
+    verb = argv[0] if argv else "hold-sweep"
+    r = subprocess.run([*cmd, verb], capture_output=True, text=True, timeout=float(os.environ.get("KREW_MODE_SWEEP_TIMEOUT_S") or 300))
+    out = (r.stdout or "") + (r.stderr or "")
+    print(out.rstrip() or f"krew-mode-hold-sweep: {' '.join(cmd)} {verb} rc={r.returncode}")
+    if r.returncode != 0:
+        strict = os.environ.get("KREW_MODE_SWEEP_STRICT", "1").strip().lower() not in ("0", "false", "no", "off")
+        print(f"krew-mode-hold-sweep: the mode script exited {r.returncode}"
+              + ("" if strict else " (reported, not a unit failure: KREW_MODE_SWEEP_STRICT=0)"))
+        return r.returncode if strict else 0
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

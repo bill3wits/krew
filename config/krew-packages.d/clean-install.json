@@ -1,0 +1,59 @@
+{
+  "_about": "The clean install (the owner 2026-10-08): the one services list every patrol reads, the guided init, the two opt-in patrols, the night's unit-registry refresh, the coders' and reviewer's maps, the panel contract.",
+  "packages": {
+    "services": {
+      "kind": "crew",
+      "about": "crew/lib/krew_services.py: $KREW_HOME/services.json (schema krew-services/v1), the one list the keeper, janitor, Daily, Steward's log collect, restart window, boot check and panel tiles read; discovery for init. config/services.example.json is the reference install's rows; config/unit-notes.example.json the registry's words.",
+      "files": [
+        "crew/lib/krew_services.py",
+        "config/services.example.json",
+        "config/unit-notes.example.json"
+      ]
+    },
+    "init": {
+      "kind": "scripts",
+      "about": "krew-install init: Hermes at the pin + patches, the eight profiles with config, the endpoint and key, the services list from discovery (named and approved by the owner), the loops named with --enable.",
+      "files": [
+        "scripts/krew_install_init.py"
+      ],
+      "optional_imports": [
+        "krew_services",
+        "hermes_env_pins"
+      ]
+    },
+    "patrols": {
+      "kind": "crew",
+      "about": "Opt-in, off by default: krew-tool-watch.py (the front door's tool-call failure rate, one card per jump when armed) and krew-wall-tab-probe.py (the Wall's page through its player, one card per dead episode when armed); their units.",
+      "files": [
+        "crew/scripts/krew-tool-watch.py",
+        "crew/scripts/krew-wall-tab-probe.py",
+        "crew/units/krew-tool-watch.service",
+        "crew/units/krew-tool-watch.timer",
+        "crew/units/krew-wall-tab-probe.service",
+        "crew/units/krew-wall-tab-probe.timer"
+      ],
+      "optional_imports": [
+        "krew_settings"
+      ]
+    },
+    "skills-maps": {
+      "kind": "skills",
+      "about": "bash-map, lila-map, vera-map: one lookup, then the skill to load (the coders' and the reviewer's indexes, beside ada-map, scout-map, steward-map, crissa-map).",
+      "files": [
+        "skills/bash-map/SKILL.md",
+        "skills/bash-map/map.yaml",
+        "skills/lila-map/SKILL.md",
+        "skills/lila-map/map.yaml",
+        "skills/vera-map/SKILL.md",
+        "skills/vera-map/map.yaml"
+      ]
+    },
+    "docs-contracts": {
+      "kind": "docs",
+      "about": "docs/PANEL-CONTRACT.md: what the Crissa Control Panel must do with krew's add-on manifest (sections, Run now, Off). docs/KREW-GOVERNANCE.md: the second-order sweep on design and change cards.",
+      "files": [
+        "docs/*.md"
+      ]
+    }
+  }
+}

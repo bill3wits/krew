@@ -1,0 +1,18 @@
+# krew: the kanban loop. Rules a green try into triage, reframes a repeated failure, retreats a card to Crissa.
+# Values are the reference install's: reframe cuts and decompose fenced to 0 (the loop's rulings - done, archive,
+# unblock, later, park - are the cards' exits), triage cards a ruler closed are closed here, the safety gate enforces.
+# Change any of them in ~/.krew/crew.yaml (env:) or a drop-in; this file is the template krew-crew-install writes.
+[Unit]
+Description=krew kanban-loop (green a try into triage; reframe a repeated failure; retreat to Crissa)
+
+[Service]
+Type=oneshot
+Environment=MAX_CUTS_PER_TICK=0
+Environment=MAX_DECOMPOSE_PER_TICK=0
+Environment=KREW_LOOP_TRIAGE_CLOSES=1
+Environment=KREW_T0_MODE=enforce
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run kanban-loop.py
+TimeoutStartSec=300
+# how the run ended, for the Control Panel's crew/kanban tile ($KREW_HOME/run-status/krew-kanban-loop.service.json);
+# `-`: a status write never fails the loop
+ExecStopPost=-/usr/bin/python3 %h/.krew/crew/scripts/krew-run-status.py %n --home %h/.krew --off %h/.hermes/kanban-loop.off

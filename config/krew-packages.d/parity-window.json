@@ -1,0 +1,19 @@
+{
+ "_about": "Lane B of the krew parity build (2026-10-10): the T0 report day's reader and its two review units. The rest of the window (window/scripts, window/lib, units/) is already placed by the main manifest's `window` and `units` globs.",
+ "packages": {
+  "t0-review": {
+   "kind": "crew",
+   "about": "crew/scripts/t0-report-hits.py: one T0 rule's report-only hits since a day (and Crissa's hermes safe-root refusals), for the owner's enforce decision; read-only. Its units review the unit-control and Crissa kit rules on a weekly Persistent timer, the day from KREW_T0_REVIEW_SINCE (the reference install fired each once, the day after arming).",
+   "files": [
+    "crew/scripts/t0-report-hits.py",
+    "crew/units/krew-t0-unit-control-review.service",
+    "crew/units/krew-t0-unit-control-review.timer",
+    "crew/units/krew-t0-crissa-kit-review.service",
+    "crew/units/krew-t0-crissa-kit-review.timer"
+   ],
+   "optional_imports": [
+    "krew_hermes"
+   ]
+  }
+ }
+}

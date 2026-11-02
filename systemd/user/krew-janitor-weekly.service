@@ -1,0 +1,9 @@
+[Unit]
+Description=krew Janitor weekly report (uptime, probe uptime, suspect config, log growth)
+Documentation=file://@KREW_HOME@/janitor/README.md
+
+[Service]
+Type=oneshot
+WorkingDirectory=@KREW_HOME@/janitor
+ExecStart=@PYTHON@ @KREW_HOME@/janitor/krew-janitor.py --weekly
+Nice=10

@@ -1,0 +1,24 @@
+     .  .     .  $$$$$x++.         .XXXX$$S$$Sx.         .  .
+   .   .     .xS88$++.          .XXXXXX$$$$$$S.       .   .
+ .        .xS8$x++.           .+XXXXXXXXXXXx.            .
+      .  .xS$xx+.          . +XXXXXXXXXXXXx.     .    .
+    .   .xS$xx++.       .XXXXXX$$$$$$x.      .xS$XXXXXXX.
+ .     .xS$xx+++.    .xxxxXXXXXXXX.     .xxS$XXXXXXXXX.
+      .xS$xx+++.   .xxxXXXXXXXXx.     .xXS$XXXXXXXXX.
+     .xS$xx+++.    .xxXS$$S$$Sxx.     .xS$$S$XXXXXX.
+    .xS$xx++.   .xxxxXXXXXXXX.     .xS$$S$XXXXXXX.
+   .xS$xx+++.  .xxxXX$$$$Xxx.   . +xS$$S$XXXXXXX.
+  .xS$OXXX$$$$Xx.  .xxXS$$$S$$Sxx.  .xS$$S$XXXXXX.
+ .xS$OOOO$$$$Xxx.  .xxxX$$$$Xxx.  . +xS$$S$XXXXX.
+.xS$OOOO$$$$Xxx.     .++.       .xX$$S$XXXXXX.
+.xS$OOOO$$$$Xxx.              .xX$$$S$XXXXXX.
+ .xS$++++xxx.   .xS$S$XXXXXXXxxx.xX$$$S$XXXXX.
+  .xSxx+xxx.  .xS$$$S$XXXXXXXXXX.xX$$$S$XXXXX.
+   .xS$xx.   .xS$$$$S$XXXXXXXX.  .xX$$$S$XXXX.
+    .xS$xx. .xS$$$$S$XXXXXXXXX.   .xX$$S$XXXX.
+   .xS$S$xx.xS$$$$$S$XXXXXXXX.    .xX$$S$XXXX.
+  .xxS$$$$S$S$$$$$$S$XXXXXXX.     .xX$$S$XXXX.
+ .xxS$$$$$S$S$$$$$$$S$XXXXX.      .xX$$S$XXXX.
+.xxS$$$$$$S$S$$$$$$$S$XXXX.       .xX$$S$XXX.
+.xS$$$$$$$S$S$$$$$$$S$XXX.        .xX$$S$XXX.
+.xS$$$$$$$S$S$$$$$$$S$XX.          .xX$S$XX.

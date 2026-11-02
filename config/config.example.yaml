@@ -1,0 +1,127 @@
+# Hermes profile config for a krew crew member: the parts krew touches. Merge into
+# $HERMES_HOME/profiles/<name>/config.yaml (or $HERMES_HOME/config.yaml for the default profile);
+# everything not shown keeps Hermes's own defaults (cli-config.yaml.example in the Hermes checkout).
+# No key values here: keys live in $HERMES_HOME/.env (see config/env.example for the NAMES).
+
+model:
+  # Any OpenAI-compatible endpoint: vLLM, SGLang, llama.cpp server, LM Studio, Ollama, a hosted API. `krew-install.py
+  # init --brains engines|xai` writes each profile's brain from crew/config/brain-presets.json (Crissa on `ops`, every
+  # other profile on `crew`); the values below are the engines preset's crew brain.
+  provider: custom
+  base_url: http://127.0.0.1:8005/v1        # engines: crew on 8005 (ops on 8000 for Crissa); claude: https://api.anthropic.com/v1; xai: https://api.x.ai/v1
+  default: crew                             # engines: crew / ops; claude: claude-fable-5-1; xai: grok-4.7
+  key_env: KREW_MODEL_API_KEY               # env var holding the key; drop it for a local server with no auth
+
+# The tools krew adds, by toolset (each plugin must also be enabled: `hermes plugins enable <name>`):
+#   team        team_board, team_time, team_config_audit       (krew-board)
+#   docs        krew_docs                                      (krew-docs)
+#   hands       hands                                          (krew-hands: the front door's one action tool)
+#   skill_read  skill_view                                     (krew-hands: a read-only skills toolset)
+#   kanban_lean a slimmer board kit for dispatched workers     (krew-kanban-lean; needs patch 50)
+#   image_gen   render_order                                   (krew-render)
+#   crissa      wall_state, wall_show, ...                     (crissa-wall: drive a Crissa Wall)
+#
+# Each crew profile's own lists (the reference install's, 2026-10-10) are in crew/config/profile-kit.json `profiles`;
+# `krew-install.py init` writes them here per profile: cli = toolsets + docs, cron and api_server = toolsets.
+#   crissa (front door):     [hands, skill_read, crissa]
+#   ada (orchestrator):    [kanban, clarify, file, memory, session_search, team, todo, skills, delegation, cronjob]
+#   bash:                  [clarify, file, terminal, code_execution, memory, team, skills, kanban_lean, delegation,
+#                           web, search, vision, video, image_gen, video_gen]
+#   steward:               [clarify, file, terminal, code_execution, memory, team, skills, kanban_lean, delegation,
+#                           cronjob, search]
+#   vera:                  [clarify, file, terminal, kanban_lean, web, search, vision, video, memory, team, todo,
+#                           skills, delegation]
+#   lila (designer):       [clarify, file, browser, web, vision, video, memory, team, skills, kanban_lean, delegation,
+#                           image_gen, video_gen]
+#   scout:                 [file, web, search, skills, memory, session_search]
+#   judge:                 [kanban_lean, file, skills]
+platform_toolsets:
+  cli: [hermes-cli, team, docs]
+
+tools:
+  tool_search:
+    # Needs patch 130. Plugin tools this profile uses in most sessions stay loaded instead of deferred.
+    eager: [team_board, team_time, krew_docs]
+
+# Memory (optional): the Hindsight plugin gives every profile one shared long memory. Install the plugin once
+# (`hermes plugins install vectorize-io/hindsight`, or `krew-install.py --memory`), run a Hindsight API
+# (crew/hindsight/README.md; krew-hindsight.service is opt-in) and put this in each crew profile. The plugin reads
+# $HERMES_HOME/hindsight/config.json (crew/hindsight/config.example.json: bank, missions, recall budget; krew-install
+# --memory seeds it). Memory ships EMPTY: no bank, no day files, no dreams come with krew.
+memory:
+  memory_enabled: true
+  provider: hindsight
+  nudge_interval: 4             # one memory nudge every 4 turns (1 = every turn hits the char cap on the mouth)
+  flush_min_turns: 1
+# hindsight:                    # the plugin's own block (optional: config.json wins)
+#   mode: local_external
+#   api_url: http://127.0.0.1:8888
+#   bank_id: krew
+
+# The Wall (Crissa) reaches this profile through the host gateway's API server: API_SERVER_ENABLED (and a key)
+# in the default profile's .env, this in the default profile's config.yaml, which serves every profile at
+# /p/<name>/v1, and the profile's own API_SERVER_KEY in its own .env (config/env.example); then restart the gateway.
+# gateway:
+#   multiplex_profiles: true
+# The board's dispatcher: ONE profile dispatches (the default profile under the host gateway: this block goes in
+# $HERMES_HOME/config.yaml; a named profile keeps dispatch_in_gateway: false). Ada orchestrates (decomposes,
+# assigns, routes); Steward is the dispatcher's default assignee: an undecomposed Ready card lands on him and he
+# bounces it to triage for a decompose (his SOUL); Crissa is never dispatched (she is the front door, not a worker);
+# a card that needs the host goes to Bash. The reference install's values; every key is Hermes's own.
+kanban:
+  dispatch_in_gateway: true          # this gateway runs the dispatcher
+  supervisor_wrapped_spawns: true
+  review_dispatch: true
+  dispatch_interval_seconds: 120
+  failure_limit: 4
+  orchestrator_profile: ada
+  default_assignee: steward          # the DISPATCHER's default (undecomposed Ready cards); team_board's default
+                                     #   for a card Crissa or a tool creates is board.default_assignee in krew.yaml (ada)
+  max_in_progress: 3
+  max_in_progress_per_profile: 2
+  auto_decompose: false              # OFF on a fresh install (Hermes's own default is on): true lets Ada split
+                                     #   every new card into children; README "Card generators" says when
+  auto_decompose_per_tick: 1
+  decompose_wip_ceiling: 150         # needs patch 70: the auto-decomposer skips a board with this many cards in flight; 0 = off
+  dispatch_stale_timeout_seconds: 3600
+  never_dispatch:
+    - crissa
+  host_route_profile: bash
+
+# Ada's decomposer (in ada's config.yaml): the model that splits a card into children. Any OpenAI-compatible
+# endpoint; api_key is any non-empty placeholder for a local server with no auth (Hermes requires one).
+# auxiliary:
+#   kanban_decomposer:
+#     provider: custom
+#     model: crew                        # the crew brain (xai preset: grok-4.7 at https://api.x.ai/v1)
+#     base_url: http://127.0.0.1:8005/v1
+#     api_key: local-no-auth
+#     timeout: 300
+#     extra_body:
+#       priority: 100
+#       chat_template_kwargs:
+#         enable_thinking: true
+
+# The front door (crissa) only. krew-install init uncomments these lines for her profile; another profile keeps them
+# as comments. Her voice and ear are the Crissa voice module's (CRISSA_PLAYER / CRISSA_ASR name the addresses; the
+# tiers turbo 8186 -> audio8 8187 -> pocket 8188 -> kokoro 8189 are krew-tts's), her hands' ceiling is
+# crew/config/crissa-cua-manifest.yaml (init copies it beside this file), and she keeps every tool but a shell and a
+# code runner (a BLOCK list: cron jobs and delegated children lose them too; full-kit hands jobs pass no -t).
+#crissa agent:
+#crissa   disabled_toolsets: [terminal, code_execution, desktop_ui, project]
+#crissa   max_turns: 60
+#crissa tts:
+#crissa   provider: crissa
+#crissa   streaming:
+#crissa     provider: crissa                 # krew-tts: the Crissa voice tiers as a streaming provider (turbo first)
+#crissa   crissa:
+#crissa     voice: crissa
+#crissa stt:
+#crissa   provider: crissa
+#crissa   providers:
+#crissa     crissa:
+#crissa       type: command                  # a voice note to her profile: the Crissa ASR through crew/scripts/krew-stt-cli.py
+#crissa       command: python3 ~/.krew/crew/scripts/krew-stt-cli.py {input_path}
+#crissa       timeout: 60
+#crissa computer_use:
+#crissa   capability_manifest: ~/.hermes/profiles/crissa/cua-manifest.yaml

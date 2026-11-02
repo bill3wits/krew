@@ -1,0 +1,31 @@
+{
+  "_about": "Where Hermes lives (krew-hermes-home-20261101, the owner 2026-11-01): crew/lib/krew_hermes.py is the one rule (hermes_home / kanban_dir / hermes_tree / runtime_python), copied byte for byte beside every krew folder that needs it (a plugin is installed alone), crew/lib/krew_hermes.sh its shell half; tests/test_hermes_home.py holds the copies identical and refuses a built ~/.hermes path anywhere else. The copies in folders another package already globs (janitor, ms/lib, rails, window/lib) ship with that package.",
+  "imports": {
+    "test_only": [
+      "krew_install_rails"
+    ]
+  },
+  "packages": {
+    "hermes-home": {
+      "kind": "crew",
+      "about": "The rule and its copies: crew/lib/krew_hermes.py (+ .sh), and the copies beside the panel, the plugins that build Hermes paths, scripts/ and two skills' scripts.",
+      "files": [
+        "crew/lib/krew_hermes.py",
+        "crew/lib/krew_hermes.sh",
+        "panel/krew_hermes.py",
+        "plugins/krew-board/krew_hermes.py",
+        "plugins/krew-comfy/krew_hermes.py",
+        "plugins/krew-docs/krew_hermes.py",
+        "plugins/krew-kitting/krew_hermes.py",
+        "plugins/krew-render/krew_hermes.py",
+        "plugins/krew-skill-preload/krew_hermes.py",
+        "plugins/team-crissa/krew_hermes.py",
+        "scripts/krew_hermes.py",
+        "skills/crissa-surface-art/scripts/krew_hermes.py",
+        "skills/wan-local/scripts/krew_hermes.py",
+        "skills/krew-skill-builder/scripts/krew_hermes.py",
+        "skills/krew-tool-builder/scripts/krew_hermes.py"
+      ]
+    }
+  }
+}

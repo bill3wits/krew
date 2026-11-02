@@ -1,0 +1,7 @@
+{
+  "_doc": "Things that moved the board's numbers and were NOT a try. improvement-outcomes marks a measured verdict `confounded` when one of these falls between a try's landing and its measure (scripts/improvement-outcomes.py mark_confounded). Add a row when the krew itself changes under the KPIs: a hermes tree change, a topology cutover, a board roll, a day the gateways were down. `at` is local time.",
+  "events": [
+    {"at": "2026-09-26T18:09", "what": "hermes tree updated ~17,500 commits to f1b4172233; every gateway down until 09-27 04:06, no dispatcher"},
+    {"at": "2026-09-27T04:35", "what": "dispatcher reopened on the new hermes; patch queue 13 -> 3, review moved to hermes's own lane"}
+  ]
+}

@@ -1,0 +1,13 @@
+name: krew-tts
+version: 1.0.0
+description: >
+  Registers the Crissa voice tiers (turbo 8186 -> audio8 8187 -> pocket 8188 -> kokoro 8189, the first that
+  answers) as a native Hermes STREAMING TTS provider named `crissa`, so speech starts on the first clause
+  instead of after full generation + synthesis. Local-only, no keys. Pin with tts.streaming.provider = crissa;
+  the voice is tts.crissa.voice. Settings: `tts:` in $KREW_HOME/krew.yaml (tiers, urls).
+author: krew
+entry: __init__.py
+kind: standalone
+requires_hermes: ">=0.21.4"
+requires_env: []
+provides_tools: []

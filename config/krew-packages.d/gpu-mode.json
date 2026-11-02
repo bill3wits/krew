@@ -1,0 +1,49 @@
+{
+  "_about": "Parity pass 2 (the User 2026-10-10): the reference install's GPU mode switch and its studio, copied whole into krew. crew/scripts/krew-mode is the reference mode switch (normal | render <recipe> | beast | off | heavy-render | heavy-exit | ada-caps | hold-sweep | release-card), with its seams cut: the tree, the flag, the hold file and the per-mode dispatch caps are krew.yaml `gpu:` keys (the reference values as defaults), the engine and voice units and ports are $KREW_HOME/services.json rows (krew-engine@ops / @crew without a row), the Wall is reached through CRISSA_PLAYER, every kill switch is the reference one renamed KREW_*. heavy-render.py, render-cycle.py, render-still.py and turbo-krew.py are its siblings; crew/lib/render_studio.py, render_wip.py, render_orders.py and crissa_gateway.py are the studio and its helpers, which the Crissa feed's /v1/render-studio* routes import when krew is installed (the feed finds crew/lib through $CRISSA_HOME/krew-lib.path, written by krew-install).",
+  "packages": {
+    "gpu-mode": {
+      "kind": "crew",
+      "about": "The GPU mode switch and the Render studio (crew/scripts/krew-mode and its siblings, the studio libs). Installed with crew/ to $KREW_HOME/crew; krew-crew-install links $KREW_HOME/bin/krew-mode to it, the path every krew caller defaults to. Comfy is the user's own (KREW_COMFY_ROOT, default ~/ComfyUI). glass_mode and zos_brave are the Wall's kiosk modules (the Crissa pack's): without them the studio's show-on-the-glass step answers 'front failed' and nothing else changes.",
+      "files": [
+        "crew/scripts/krew-mode",
+        "crew/scripts/heavy-render.py",
+        "crew/scripts/render-cycle.py",
+        "crew/scripts/render-still.py",
+        "crew/scripts/turbo-krew.py",
+        "crew/lib/render_studio.py",
+        "crew/lib/render_wip.py",
+        "crew/lib/render_orders.py",
+        "crew/lib/crissa_gateway.py",
+        "crew/lib/krew_comfy.py",
+        "crew/lib/krew_mode_cmd.py"
+      ],
+      "local_paths": [
+        "crew/lib",
+        "janitor"
+      ],
+      "optional_imports": [
+        "yaml",
+        "ruamel",
+        "websocket",
+        "krew_baseline"
+      ],
+      "absent_ok_imports": {
+        "glass_mode": "the Wall's kiosk glass (Crissa): the studio's front-tab step and the status line's kiosk mark degrade",
+        "zos_brave": "the Wall's background browser (Crissa): a finished render is not tabbed in the background"
+      }
+    }
+  },
+  "imports": {
+    "test_only": [
+      "hermes_topology",
+      "render_studio",
+      "render_wip",
+      "render_orders",
+      "render_window_gate",
+      "crissa_gateway",
+      "krew_hours",
+      "panel_units",
+      "restart_window"
+    ]
+  }
+}

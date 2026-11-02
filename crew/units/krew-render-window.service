@@ -1,0 +1,9 @@
+# krew: the render window. Every tick it holds render cards by day and batches them into the user's off-hours
+# (the window hours, Lane A's krew_hours) for Ada to judge. Off switch: ~/.hermes/render-window.off.
+[Unit]
+Description=krew render window — hold render cards by day, batch them into the off-hours for Ada to judge
+
+[Service]
+Type=oneshot
+TimeoutStartSec=5min
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run render-window.py tick

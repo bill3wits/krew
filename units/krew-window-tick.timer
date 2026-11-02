@@ -1,0 +1,10 @@
+[Unit]
+Description=krew-window-tick every 5 min: starts the night's jobs inside off_hours (off switch: {krew_home}/krew-window-tick.off)
+
+[Timer]
+OnCalendar=*:0/5
+AccuracySec=30s
+Persistent=false
+
+[Install]
+WantedBy=timers.target

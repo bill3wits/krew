@@ -1,0 +1,45 @@
+# why: A worker's clean exit (rc=0) with the board unchanged is a failed run: the violation budget is 1 by default. HERMES_KANBAN_PROTOCOL_VIOLATION_LIMIT=3 restores upstream's bounded retry; per-task max_retries still wins.
+# tests: 
+# upstream: policy; keep local
+# base: hermes-agent 35272ce28b29 (v0.21.4+canary.20260928T071354Z-19-g35272ce28b)
+
+diff --git a/hermes_cli/kanban_db_dispatch.py b/hermes_cli/kanban_db_dispatch.py
+index 0fc321320c..adde906c0a 100644
+--- a/hermes_cli/kanban_db_dispatch.py
++++ b/hermes_cli/kanban_db_dispatch.py
+@@ -922,6 +922,26 @@ def _error_fingerprint(error_text: str) -> str:
+ # nor extend it. Per-task ``max_retries`` overrides it.
+ _PROTOCOL_VIOLATION_FAILURE_LIMIT = 3
+ 
++
++def _resolve_protocol_violation_limit() -> int:
++    """The violation budget in force (krew patch 20).
++
++    Krew policy since 2026-09-12: a clean exit with the board state unchanged is a
++    failed run, so the FIRST one trips the breaker instead of burning two more full worker runs.
++    ``HERMES_KANBAN_PROTOCOL_VIOLATION_LIMIT=3`` restores upstream's bounded retry; empty, a
++    non-integer or a negative value falls back to the krew default. Per-task ``max_retries``
++    still wins.
++    """
++    raw = os.environ.get("HERMES_KANBAN_PROTOCOL_VIOLATION_LIMIT", "").strip()
++    if raw:
++        try:
++            parsed = int(raw)
++        except ValueError:
++            parsed = -1
++        if parsed >= 0:
++            return parsed
++    return 1
++
+ # Closed runs to walk when counting the streak; it trips at a handful anyway.
+ _PROTOCOL_VIOLATION_SCAN_LIMIT = 50
+ 
+@@ -1227,7 +1247,7 @@ def _account_crashes(conn: sqlite3.Connection, crash_details: list) -> list[str]
+                 continue  # task deleted mid-loop
+             task_override = _kb._row_get(trow, "max_retries")
+             violation_limit = (
+-                int(task_override) if task_override is not None else _PROTOCOL_VIOLATION_FAILURE_LIMIT
++                int(task_override) if task_override is not None else _resolve_protocol_violation_limit()
+             )
+             if streak < violation_limit:
+                 # Below budget: already back at ``ready`` with the error stamped.

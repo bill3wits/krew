@@ -1,0 +1,16 @@
+# krew: opt-in. Every KEEPER_CHECK_SEC: health-check every lane in $KREW_HOME/services.json (the one services list;
+# krew-install init writes it), restart a dead lane whose row says watch (twice down, past its start grace, at most
+# KEEPER_RESTARTS_PER_DAY a day), reopen the Wall's ear when Crissa is live, log every action to KEEPER_LOG. Rows
+# with role observe / report-only / never-restart are watched only. No list = no lanes, and it says so.
+[Unit]
+Description=krew keeper (ear reopen + lane watchdog + config assert)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run krew-keeper.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

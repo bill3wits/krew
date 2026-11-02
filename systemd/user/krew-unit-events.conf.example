@@ -1,0 +1,6 @@
+# Drop-in: log every start and stop of a unit to the Janitor's unit-event log (janitor/krew-unit-event-log.sh).
+# Install: copy to ~/.config/systemd/user/<unit>.service.d/krew-unit-events.conf for each unit to follow, then
+# `systemctl --user daemon-reload` (takes effect at the unit's next start).
+[Service]
+ExecStartPre=-@KREW_HOME@/janitor/krew-unit-event-log.sh start-pre %n
+ExecStopPost=-@KREW_HOME@/janitor/krew-unit-event-log.sh stop-post %n $SERVICE_RESULT $EXIT_CODE

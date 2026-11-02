@@ -1,0 +1,10 @@
+# krew: land finished ComfyUI takes, score the ends against the plate, unblock the card. Scoring needs OpenCV:
+# point KREW_PYTHON at a python that has cv2 (a drop-in, ref: the reference install's vLLM env); without it
+# the take still lands, unscored. A failed pass never fails the unit (ExecStart=-).
+[Unit]
+Description=krew render collect — land finished ComfyUI takes, score ends, unblock the card
+
+[Service]
+Type=oneshot
+# Environment=KREW_PYTHON=%h/<env-with-opencv>/bin/python3
+ExecStart=-/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run render-collect.py

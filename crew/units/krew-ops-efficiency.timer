@@ -1,0 +1,11 @@
+# krew: Ada's ops-efficiency report, Sundays 09:00.
+[Unit]
+Description=Sunday 09:00 Ada ops-efficiency report
+
+[Timer]
+OnCalendar=Sun *-*-* 09:00:00
+Persistent=false
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

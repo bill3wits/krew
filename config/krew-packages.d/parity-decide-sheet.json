@@ -1,0 +1,16 @@
+{
+  "_about": "Parity sweep 2026-10-26 (gap 4): the reference install ran its Decide sheet's privacy watch as a unit; krew shipped the sheet (plugins/team-crissa/crissa-decide-list.py) but no unit ran its `watch`, so a sheet left up outlived his leaving.",
+  "packages": {
+    "decide-sheet-watch": {
+      "kind": "crew",
+      "about": "crew/units/krew-decide-sheet-watch.service: crew/scripts/krew-decide-sheet-watch.py runs crissa-decide-list.py watch from the Hermes home (through krew-crew-run); the sheet comes down when he leaves, his auth drops, the room goes Busy or a second body enters. Quiet with no Wall. Off: ~/.krew/krew-decide-sheet-watch.off.",
+      "files": [
+        "crew/units/krew-decide-sheet-watch.service",
+        "crew/scripts/krew-decide-sheet-watch.py"
+      ],
+      "optional_imports": [
+        "krew_hermes"
+      ]
+    }
+  }
+}

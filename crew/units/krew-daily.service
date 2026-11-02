@@ -1,0 +1,13 @@
+# krew: the Daily - the one report the user opens, built as the off-hours close.
+# No timer of its own: the window ticker (krew's off-hours scheduler) starts it as a window job and writes the
+# day it serves to krew-day.env. Run it by hand any time.
+# One decode-speed sample per day first; "-" = a day with too few intervals or a recorder error never stops the page.
+[Unit]
+Description=krew Daily (the one report, built as the off-hours close)
+
+[Service]
+Type=oneshot
+EnvironmentFile=-%h/.krew/krew-day.env
+ExecStartPre=-/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run ops-toks-day.py --record
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run krew-daily.py
+Nice=10

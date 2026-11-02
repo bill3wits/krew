@@ -1,0 +1,69 @@
+# why: npm audit: ui-tui undici 6.28.0 -> 6.29.0 closes 1 HIGH finding (GHSA-3wwx-pv8p-q78v, GHSA-r53p-7pc4-xj5r, GHSA-rfgv-xxqx-mfg5); .npmrc min-release-age exclude for undici. Stacks on 150 + 180.
+# tests: 
+# upstream: dependency bump; drop when the pin carries it
+# base: hermes-agent 35272ce28b29 (v0.21.4+canary.20260928T071354Z-19-g35272ce28b)
+
+diff --git a/.npmrc b/.npmrc
+index 0e25208..868a1c0 100644
+--- a/.npmrc
++++ b/.npmrc
+@@ -61,3 +61,7 @@ min-release-age-exclude[]=@oxc-project/types
+ # ink needs
+ min-release-age-exclude[]=lightningcss
+ min-release-age-exclude[]=postcss
++
++# undici 6.29.0 includes fixes for GHSA-3wwx-pv8p-q78v / GHSA-r53p-7pc4-xj5r / GHSA-rfgv-xxqx-mfg5 (ui-tui workspace).
++# remove this when 6.29.0 is > 2wks old.
++min-release-age-exclude[]=undici
+diff --git a/package-lock.json b/package-lock.json
+index 74e7bc7..7a6ba54 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -19325,7 +19325,7 @@
+         "ink-text-input": "6.0.0",
+         "nanostores": "1.4.2",
+         "react": "19.2.7",
+-        "undici": "6.28.0",
++        "undici": "6.29.0",
+         "unicode-animations": "1.0.3"
+       },
+       "devDependencies": {
+@@ -19351,9 +19351,9 @@
+       }
+     },
+     "ui-tui/node_modules/undici": {
+-      "version": "6.28.0",
+-      "resolved": "https://registry.npmjs.org/undici/-/undici-6.28.0.tgz",
+-      "integrity": "sha512-LIY910g9TI13YS95lrMFrs8Rm/u/irgHeTWoKCoteeJ04CUJ92eEfj0rVn+7VKMPBpUPiUoBKfhNyLI23EE/KA==",
++      "version": "6.29.0",
++      "resolved": "https://registry.npmjs.org/undici/-/undici-6.29.0.tgz",
++      "integrity": "sha512-R+RODBqp6i2pPflGdq+xIOUkl+RNfGgHwoinecKu/JCuf2uO06cOKoDbI2P7Dn6KcswdKwrczbU6IYJ6K8X+wg==",
+       "license": "MIT",
+       "engines": {
+         "node": ">=18.17"
+diff --git a/package.json b/package.json
+index 2fed3ee..dcc4a10 100644
+--- a/package.json
++++ b/package.json
+@@ -56,7 +56,7 @@
+     "nanoid@^3": "3.3.18",
+     "nanoid@^6": "6.0.0",
+     "js-yaml@^4": "4.3.1",
+-    "undici@^6": "6.28.0",
++    "undici@^6": "6.29.0",
+     "undici@^7": "7.29.1",
+     "postcss": "8.5.23",
+     "tar": "7.5.22"
+diff --git a/ui-tui/package.json b/ui-tui/package.json
+index 5519db7..3f1da38 100644
+--- a/ui-tui/package.json
++++ b/ui-tui/package.json
+@@ -25,7 +25,7 @@
+     "ink-text-input": "6.0.0",
+     "nanostores": "1.4.2",
+     "react": "19.2.7",
+-    "undici": "6.28.0",
++    "undici": "6.29.0",
+     "unicode-animations": "1.0.3"
+   },
+   "overrides": {

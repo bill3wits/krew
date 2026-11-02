@@ -1,0 +1,13 @@
+# krew: opt-in (the fixed-time alternative to the window ticker, never both); `--enable <name>` turns it on, `--enable all` never does.
+# For a machine with no off_hours in krew.yaml: a fixed time instead of the window ticker. While this timer is
+# enabled the ticker hands the M&S nightly to it (legacy_timer in window-schedule.json). init writes it and never enables it unnamed.
+[Unit]
+Description=M&S nightly at 22:30 (only when off_hours is not used)
+
+[Timer]
+OnCalendar=*-*-* 22:30:00
+RandomizedDelaySec=300
+Persistent=true
+
+[Install]
+WantedBy=timers.target

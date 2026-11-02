@@ -1,0 +1,11 @@
+# krew: improvement outcomes (after improve-file).
+# No timer of its own: the window ticker (krew's off-hours scheduler) starts it as a window job and writes the
+# day it serves to krew-day.env. Run it by hand any time.
+[Unit]
+Description=krew improvement outcomes: did each agreed, landed improvement move the KPI it named?
+
+[Service]
+Type=oneshot
+TimeoutStartSec=5min
+EnvironmentFile=-%h/.krew/krew-day.env
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run improvement-outcomes.py

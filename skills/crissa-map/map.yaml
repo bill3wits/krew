@@ -1,0 +1,86 @@
+#
+# skills / manifest / filesystem … one index lookup from hers for that turn";
+# "skill on demand. Why not that for all of them?").
+#
+# SOURCE for SKILL.md beside it: the reference install builds SKILL.md from this file (its builder is not
+# shipped), so change both together.
+# Skill descriptions are read from each pack SKILL.md; roles from
+# crew.manifest.yaml. Only the trigger words and the hands jobs live here.
+#
+# One row per kind of ask. `skill` = load it with skill_view, then act.
+# `hands` = no skill needed; say this job to hands in plain words (his words
+# go where <…> is). A row may have both: skill first, then the hands job.
+
+rows:
+  - ask: "show me · put up · display · on screen · let me see"
+    skill: crissa-her-wall
+    hands: "put <what> on the wall"
+  - ask: "his list · ask him yes/no · a task with steps · what's on my list"
+    skill: crissa-list
+    hands: "team_list <ask|task> <words>"
+  - ask: "what's the krew doing · how is the board · what is Ada doing · what got done"
+    hands: "kanban report: <his words> — list the board, say counts and the cards that matter"
+  - ask: "something needs doing that outlives this chat · can we · could you get"
+    skill: crissa-needs
+    hands: "file a triage card for ada: <one sentence>"
+  - ask: "Decide queue · rule a card · krew stuck · should this reach him · green this"
+    skill: crissa-needs
+    hands: "rule the Decide card: try, park, later, or answer — do not file another card"
+  - ask: "who is here · is he authenticated · guest · re-auth"
+    skill: crissa-auth
+  - ask: "look at the door · look at the room · who is that"
+    skill: crissa-look
+  - ask: "morning brief · what happened overnight · M&S"
+    skill: crissa-morning
+  - ask: "draft copy · marketing · a still/clip · hero clip · post to X · Space · Google Ads · verbal summary"
+    skill: crissa-marketing
+    note: "In Render mode: crissa-render-cycle."
+  - ask: "write it up · a page on the glass · a report"
+    skill: crissa-report
+  - ask: "click · open the page · drive the desktop · type into"
+    skill: crissa-cua
+  - ask: "krew health · lamps · journals · is a unit down"
+    skill: krew-panel
+    hands: "read the krew panel: <what>"
+  - ask: "big job · take this on · consultant"
+    skill: crissa-big-push
+  - ask: "give me the file · deliver · leave it on my desktop"
+    skill: krew-deliverable
+    hands: "write <name> to ~/Desktop/krew-deliverables/"
+  - ask: "we keep failing · step back"
+    skill: krew-reframe
+  - ask: "who does what · who is Steward · which profile"
+    hands: "read hermes-packs/crew.manifest.yaml and answer: <question>"
+  - ask: "who is at the door right now · how many people"
+    hands: "GET $CRISSA_PLAYER/v1/rail/presence/v1/presence and say who"
+  - ask: "search · look up · what is the latest on · what people say"
+    hands: "search the web: <question>"
+  - ask: "a banner · ASCII art"
+    hands: "team_banner text=<his words>"
+  - ask: "remember · what did I say · did we"
+    hands: "recall from memory: <topic>"
+  - ask: "where is · how do I · what did we decide · why is it like this"
+    hands: "krew_docs lookup: <question>; name the ref"
+  - ask: "look this up · read up on · find the paper · what are they saying"
+    hands: "research it and cite what you read (arxiv · grounded-citations · blogwatcher)"
+  - ask: "what can you do here · is there a tool for"
+    hands: "name the two or three that fit, then do the one he picks"
+  - ask: "a deck · slides · an infographic"
+    hands: "build it, on the glass, say where"
+  - ask: "check the krew · judge the judge"
+    skill: crissa-spotcheck
+
+where:
+  - "Finished work for him: `~/Desktop/krew-deliverables/`"
+  - "The krew docs: `~/.krew/docs/`"
+  - "Who does what: `hermes-packs/crew.manifest.yaml`"
+  - "Your kit: `~/.hermes/profiles/crissa/` (skills in `skills/house/`)"
+  - "The board: `~/.hermes/kanban/boards/<today>/` — never by hand; `hands` reads it"
+  - "Presence: `$CRISSA_PLAYER/v1/rail/presence/v1/presence` · glass `$CRISSA_PLAYER/v1/screen` · his list `:8898`"
+
+rule: >
+  One lookup, then act. Load the row's skill (if any) and give `hands` the
+  job in plain words. No second `skill_view` in the same turn unless the
+  skill you loaded names one. No row fits: `hands` with his words as they were.
+  Say filed, ruled or on the glass only when the `hands` reply has a
+  `confirmed:` line for it; otherwise say you could not confirm it.

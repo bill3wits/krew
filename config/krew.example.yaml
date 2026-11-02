@@ -1,0 +1,163 @@
+# krew settings: copy to $KREW_HOME/krew.yaml (default ~/.krew/krew.yaml; KREW_CONFIG overrides the path).
+# Every key is optional; the value shown is the default. Machine- and user-specific values live here, never in code.
+# Profile names are the crew's (crissa, lila, ada, bash, steward, vera, scout, judge): the SOULs, skills and the
+# defaults below key on them, so keep them when you make the profiles.
+
+# hermes_bin: hermes                 # the `hermes` command (else PATH, else ~/.local/bin/hermes); env KREW_HERMES_BIN
+# off_hours: "22:00-06:00"          # the owner's off-hours, local time: krew-window-tick starts the night's jobs
+                                     #   ($KREW_HOME/window-schedule.json) inside it; unset = no night jobs, and it says so
+# quiet_hours: ""                    # when the crew keeps quiet; unset = off_hours, else 22:00-08:00
+
+board:                               # krew-board: team_board, team_time, team_config_audit
+  author: ""                         # name on comments and created cards ("" = the calling profile)
+  default_assignee: ada              # who a card CREATED through team_board goes to when none is named: Ada, who
+                                     #   decomposes and routes it. Not the dispatcher's default (kanban.default_assignee
+                                     #   in the default profile's config.yaml, steward: an undecomposed Ready card
+                                     #   lands on him and he bounces it to triage). "" = the board's own default
+  pack_hint: ""                      # where a config change should be proposed (shown by team_config_audit)
+
+docs:                                # krew-docs: krew_docs lookup / read / suggest, and the index builder
+  n: 5                               # passages per lookup
+  chars: 1200                        # a passage longer than this is shortened AND says so, with the read call for the rest
+  timeout_s: 30
+  sources_allowed: []                # [] = every indexed source; else only these source names
+  profiles: []                       # [] = every profile that enables the plugin gets krew_docs; else only these, e.g.
+                                     #   [ada, bash, judge, lila, scout, steward, vera]
+                                     # ref: [ada, bash, judge, lila, scout, steward, vera] (Crissa reads docs through her hands runner)
+  # index_db: ~/.krew/docs-index/index.db
+  # index_python: ""                 # python that runs queries (default: the agent's own)
+  # queue: ~/.krew/docs-suggestions.jsonl   # suggested references wait here for your review
+  # hermes_tree: ~/.hermes/hermes-agent     # where the Hermes docs are read from (or env HERMES_TREE)
+  # embedder_venv: ~/.krew/hindsight/.venv  # where onnxruntime + tokenizers + numpy come from (default: the Hindsight venv
+                                             # krew-install --memory makes); no embedder = keyword search only
+  # embedder: e5                             # the shared intfloat/multilingual-e5-small (crew/local-services.json), its
+                                             # ONNX export from the shared HF home; `fastembed` + embedder_model = the old path
+  # embedder_model: BAAI/bge-small-en-v1.5   # read only with embedder: fastembed
+  # embedder_threads: 4
+  # embedder_batch: 64
+  # sources:                         # name -> folder of .md/.txt (or "hermes-docs"); unset = Hermes docs + your skills
+  #   hermes: hermes-docs
+  #   skills: ~/.hermes/skills
+  #   built: ~/.krew/built           # what krew-skill-builder / krew-tool-builder made (keep it when you set sources)
+  #   notes: ~/Documents/notes
+
+hands:                               # krew-hands: one `hands` tool that runs a child Hermes for the front door
+  profile: crissa                      # profile the child runs as and the only one who may call hands ("" = the loading profile)
+  toolsets: ""                       # comma list for the child (-t); "" = that profile's own
+  max_turns: 24
+  timeout_s: 300
+  yolo: false                        # true passes --yolo (no approval prompts) to the child: your call
+  subdirectory_hints: false          # false sets HERMES_SUBDIRECTORY_HINTS=0 for the child (needs patch 120)
+
+render:                              # krew-render: render_order, render cards, render_runner.py
+  cards: false                       # true = show a recipe's card (licence, inputs, look step) while it is in play;
+                                     #   enable krew-render on lila, bash and vera (the profiles that render or review renders)
+  recipes: ~/.krew/recipes.json      # shape: config/recipes.example.json
+  profiles: [lila, bash]             # who may file orders (Lila and Bash render, Vera reviews); [] or ["*"] = anyone with the tool
+  orders_dir: ~/.krew/render-orders
+  # Comfy's folders and URL default to the ONE Comfy location krew shares with the Wall (crew/lib/krew_comfy.py):
+  # the Wall's <CRISSA_HOME>/render.json (comfy_dir, workflows, models, input, comfy_url), else KREW_COMFY_ROOT /
+  # KREW_COMFY_*, else ~/ComfyUI. A key set here overrides it for the render queue only.
+  # workflows_dir: ~/ComfyUI/workflows     # your ComfyUI API-format workflows
+  # models_dir: ~/ComfyUI/models           # your ComfyUI models folder (sizes are read for batching)
+  # comfy_input_dir: ~/ComfyUI/input       # your ComfyUI input folder (stills for i2v / edit are copied here)
+  # comfy_url: http://127.0.0.1:8188
+  order_timeout_s: 1800
+  before_run: ""                     # a command run before a batch (start ComfyUI, free a GPU); "" = none
+  after_run: ""                      # a command run after (always, once before_run started)
+
+gpu:                                 # crew/scripts/krew-mode: the GPU mode switch (normal | render <recipe> | beast | off |
+                                     #   heavy-render), its holds and the board's dispatch caps per mode. Every key is
+                                     #   optional; the defaults are the reference install's. Unit names and the engines'
+                                     #   ports come from $KREW_HOME/services.json (rows ops, crew, voice); with no row the
+                                     #   engines are krew's own units, krew-engine@ops / krew-engine@crew.
+  # state_dir: ~/.hermes             # the flag, the hold ledger, the state and the pin snapshots (env KREW_HERMES); the
+                                     #   passwd home's ~/.hermes, where the keeper, the board gate and krew-comfy read the flag
+  # gpu_mode_file: ~/.hermes/krew-gpu-mode   # the flag itself (env KREW_GPU_MODE_FILE); engines/start-engine.sh reads it
+  # hold_file: /tmp/krew-train-hold  # GPU holds, one `<unit>.service` per line, `# unit <u> card=<id>` owners (env KREW_TRAIN_HOLD)
+  # caps:                            # the dispatcher's kanban caps per mode, [max_in_progress, per profile]
+  #   normal: [3, 2]
+  #   turbo: [6, 3]                  # while TurboKrew lends ops to vera + steward (crew/scripts/turbo-krew.py)
+  #   render: [3, 1]                 # one worker per renderer (Lila draws, Bash letters, Vera reviews)
+  # bash_spawn: {render: [1, 1]}     # bash's delegation (children, depth) while Render is open
+  # crissa_spawn: {normal: [2, 1]}     # Crissa's delegation on ops
+  # Switches (env, unset = on unless noted): KREW_ADA_CAPS_BOUNCE, KREW_SWEEP_COMFY_LEAK, KREW_SWEEP_WAY_BACK,
+  #   KREW_SWEEP_OCCUPANCY, KREW_SWEEP_FLAG_HOME, KREW_FLAG_HOME_COMFY_BUSY, KREW_OCCUPANCY_CARD_FROM_CWD,
+  #   KREW_CRISSA_CREW_IN_RENDER, KREW_COSY_RENDER_PARK, KREW_RENDER_LILA_HOST, KREW_COMFY_SCOPE; KREW_HEAVY_RENDER=1 opens
+  #   the heavy-render window (crew/scripts/heavy-render.py, off by default). Comfy's folders: the one Comfy location
+  #   (crew/lib/krew_comfy.py: the Wall's render.json, else KREW_COMFY_ROOT, else ~/ComfyUI: main.py, venv/bin/python,
+  #   workflows, input, output, models).
+  # The Wall (Crissa): CRISSA_PLAYER (default http://127.0.0.1:8100) and CRISSA_FEED (default
+  #   http://127.0.0.1:8099), the pack's port table; presence is read through the player's rail.
+
+panel:                               # krew-panel (the panel_* tools) and krew's tiles in the Crissa Control Panel
+                                     # Unset = not configured: every tool says so and sends nothing.
+  url: ""                            # the Control Panel's HTTP root (routes /v1/house, /v1/journal, /v1/script, /v1/logs,
+                                     #   /v1/security/summary, /v1/action); env KREW_PANEL_URL
+                                     # the panel server's port (crissa-panel-server.py, default 8097), not the
+                                     #   player's: the player answers 404 on /v1/logs and /v1/security/summary
+                                     # ref: url: http://127.0.0.1:8097
+  camera_url: ""                     # the door camera service (GET /health: lease, sweep, pause); panel_camera_home only
+                                     #   moves it when nobody holds it; env KREW_CAMERA_URL
+                                     # ref: camera_url: http://127.0.0.1:8192
+  announce_mute: ""                  # the announcer's mute flag file (it exists = muted); "" = read the panel's own answer
+                                     #   back instead; env KREW_ANNOUNCE_MUTE
+                                     # ref: announce_mute: ~/.hermes/ref-announce-mute
+  tiles:                             # panel/krew-panel-tiles.py: krew's few tiles in the panel's bottom section (Crissa
+                                     #   owns the panel; without these the section says "Hermes krew plugin not installed")
+    dir: ""                          # the panel's add-on folder; "" = $CRISSA_HOME/panel.d, else ~/.crissa/panel.d
+                                     # ref: dir: ~/.hermes/panel.d   (the reference install's Crissa state home)
+    title: Krew                      # the add-on's name on the panel
+    gateway: hermes-gateway.service  # the host gateway (every profile on one gateway): a full tile with its keys
+    gateway_port: 8642
+    gateway_label: "Host gateway - every profile on one gateway"
+                                     # ref: gateway_label: "Host gateway - every profile (Crissa, Ada, Steward, Lila) on one gateway"
+    profile_gateways: "hermes-*-gateway.service"   # every per-profile gateway on the machine; a masked one shows parked
+    profile_label: "{unit} - one profile's gateway"
+    dashboard: hermes-dashboard.service
+    dashboard_port: 9119
+    dashboard_label: "Hermes - dashboard"
+    dashboard_url: ""                # its page (the panel's Open key); "" = http://127.0.0.1:<dashboard_port>/
+    kanban: krew-kanban-loop.timer   # crew/kanban: a report tile for the loop's last run + its timer (Run now; the
+                                     #   journal pages timer + loop); "" = no tile
+                                     #   a loop of your own: name its timer; its service needs the same ExecStopPost=
+                                     #   krew-run-status line, else the tile says "no report yet"
+    kanban_label: "Crew kanban - the loop: greens a try, reframes a repeated failure, retreats to Crissa"
+    kanban_status: ""                # "" = what krew-run-status writes: $KREW_HOME/run-status/krew-kanban-loop.service.json
+    kanban_stale_s: 3600             # no report for this long = the panel calls it stale (the loop ticks every 20 min)
+    janitor: true                    # the Janitor's report tile (level + headline of its snapshot) + krew-janitor.timer
+    janitor_report: ""               # "" = the janitor's own snapshot ($KREW_HOME/janitor/metrics/janitor-latest.json)
+    extra: []                        # more tiles this machine's Hermes leans on: {unit|match|href|status, label, port, scope}
+                                     # ref: extra:
+                                     # ref:   - {unit: crew.service, label: "Krew - LLM behind the krew profiles", port: 8005}
+                                     # ref:   - {unit: searxng.service, scope: system, label: "Searxng - web search", port: 8080}
+                                     # ref:   - {unit: firecrawl.service, label: "Firecrawl - page reader", port: 3002}
+                                     # ref:   - {unit: cua-driver.service, label: "CUA - the X11 driver (hermes starts its own per session)"}
+                                     # ref:   - {unit: hindsight.service, scope: system, label: "Hindsight - recall", port: 8888}
+                                     # ref:   - {unit: approvals-api.service, scope: system, label: "Crissa's list - pending yes/no and tasks", port: 8898, href: "http://127.0.0.1:8898/"}
+                                     # ref:   - {unit: krew-crissa-decide-sheet-watch.service, label: "Decide sheet - takes it down for a second body"}
+  # The reference install enables krew-panel (and the krew-panel skill) for ada, bash, lila, steward, vera and crissa.
+
+# owner:                             # the person the front door answers to: her Decide watch greets by this name
+#   id: ""                           #   (crew/scripts/crissa-needs-watch.py); unset = "the owner", a short hello. Never in code.
+#   name: ""
+
+oracle:                              # krew-oracle: the Oracle visit loop's tools for the front door
+  player: ""                         # the Crissa Wall's player; "" = CRISSA_PLAYER, else http://127.0.0.1:8100 (presence is
+                                     #   read through it: /v1/rail/presence/v1/presence, /v1/inspector)
+  presence_url: ""                   # the presence service's OWN address, for the camera verbs (look at a station, name a
+                                     #   face, embed a frame, error-check); "" = those say "not on this install"; env KREW_PRESENCE_URL
+                                     # ref: presence_url: http://127.0.0.1:8191
+
+tts:                                 # krew-tts: the Crissa voice tiers as the `crissa` streaming TTS provider
+  tiers: [turbo, audio8, pocket, kokoro]   # in order; the first that answers speaks (ports 8186, 8187, 8188, 8189 =
+                                     #   the pack's port table; CRISSA_PORT_<TIER> moves one, KREW_TTS_URL names one address)
+  urls: {}                           # tier -> address, when a tier is not on its table port, e.g. {turbo: "http://127.0.0.1:8186"}
+
+# The spoken tool callout (crew/scripts/crissa-tool-callout.py, a pre_tool_call hook on every crew profile) reads
+# $KREW_HOME/voice.json: {"voice": "on"|"off", "tool_callout": "info"|"on"|"off"}; no file = on, info. It speaks
+# through the Wall's player (/v1/announce); $KREW_HOME/announce-mute silences it.
+
+# Environment switches (unset = on unless noted): KREW_DOCS, KREW_DOCS_INDEX, KREW_KANBAN_SHOW_SLIM,
+# KREW_RENDER_ORDER_TOOL, KREW_ORDERS_REQUEUE, KREW_RENDER_CARD (1/0 overrides render.cards).
+# Set one to 0 to switch that piece off without uninstalling.

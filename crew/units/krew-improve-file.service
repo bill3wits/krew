@@ -1,0 +1,11 @@
+# krew: the ONE filer of the improvement round (after team eval).
+# No timer of its own: the window ticker (krew's off-hours scheduler) starts it as a window job and writes the
+# day it serves to krew-day.env. Run it by hand any time.
+[Unit]
+Description=krew improve-file: records the idea ledger, files only the team's agreed tier under a quorum, cap 2
+
+[Service]
+Type=oneshot
+TimeoutStartSec=15min
+EnvironmentFile=-%h/.krew/krew-day.env
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run steward-file-architect-cards.py --window

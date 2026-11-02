@@ -1,0 +1,15 @@
+name: krew-kanban-lean
+version: 1.0.0
+description: >
+  The ten kanban verbs a worker actually uses (show, complete, block, comment, attach, attach_url,
+  heartbeat, request_review, request_changes, link) as toolset `kanban_lean`: the built-in handlers,
+  with description prose trimmed to its first sentence. Names, types, enums and required fields are
+  untouched. Pairs with krew patch 50.
+author: krew
+entry: __init__.py
+kind: standalone
+requires_hermes: ">=0.21.4"
+requires_env: []
+provides:
+  - toolset: kanban_lean
+    tools: []

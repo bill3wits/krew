@@ -1,0 +1,18 @@
+  .  $$$$x+.      .XXX$$Sx.   .
+ .  xS8$++.     .XXXXXX$$S.  .
+   .xS$x+.    .+XXXXXXXX.   .
+  .xS$x++.  .XXXX$$$$x. xS$X.
+ .xS$x+++. .xxxXXXX.  xS$XXX.
+ .xS$x+++.  .xS$$Sxx. xS$$XX.
+.xS$x++.  .xxxXXXX. .xS$$XXX.
+.xS$XXX$$$x. .xS$$Sxx.xS$$XX.
+.xSOO$$$$x.  .xX$$$x. xS$$X.
+.xSOO$$$$x.    .++.  .xS$$X.
+ .xS++xx.  .xS$XXXXXxxX$$X.
+  .xSxx.  .xS$$XXXXXXXX$$X.
+   .xS$. .xS$$$XXXXXXX.x$$X.
+  .xS$$x.xS$$$$XXXXXX. x$$X.
+ .xxS$$$S$$$$$$XXXXX.  x$$X.
+.xxS$$$$S$$$$$$XXXX.   x$$X.
+.xS$$$$$S$$$$$$XXX.    x$$X.
+.xS$$$$$S$$$$$$XX.      x$X.

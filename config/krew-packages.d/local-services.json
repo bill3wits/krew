@@ -1,0 +1,45 @@
+{
+  "_about": "krew's local services (the User 2026-11-01: \"EVERYthing we run is local\"): the crew's long memory and web search installed on the buyer's machine by krew-install --memory / --search (both on by default in init), pinned in crew/local-services.json.",
+  "imports": {
+    "test_only": [
+      "krew_install_local",
+      "krew_install_panel_tiles"
+    ]
+  },
+  "packages": {
+    "local-services": {
+      "kind": "scripts",
+      "about": "scripts/krew_install_local.py (the memory + search steps: the vendored plugin, hindsight-api in a user-space venv on CPU torch, the shared embedding model fetched once, the pgvector store from pg0, SearXNG at its pinned commit, the units enabled on an own install, every profile's web search on loopback with Hermes's keyless cloud ring off) and crew/local-services.json (every pin and sha it checks).",
+      "files": [
+        "scripts/krew_install_local.py",
+        "crew/local-services.json",
+        "crew/units/krew-memory-db.service",
+        "crew/units/krew-searxng.service"
+      ]
+    },
+    "hindsight-plugin-vendored": {
+      "kind": "plugin",
+      "about": "The Hindsight Hermes plugin, vendored (MIT, its LICENSE beside it): upstream vectorize-io/hindsight hindsight-integrations/hermes at 176f8c2 minus its tests, byte-checked against the reference install's catalog copy. krew-install --memory copies it into $HERMES_HOME/plugins/hindsight and refuses a copy whose tree sha is not the pin; Hermes's catalog fetch and its scan never run. Its imports of Hermes's own modules (hermes_time, utils, gateway, plugins.memory) and its pip pin are optional here: they exist only inside Hermes's runtime.",
+      "files": [
+        "crew/hindsight/plugin/hindsight/*"
+      ],
+      "optional_imports": [
+        "hindsight_client",
+        "hindsight_client_api",
+        "hindsight_embed",
+        "hindsight",
+        "setuptools",
+        "aiohttp",
+        "requests",
+        "httpx",
+        "yaml",
+        "packaging",
+        "rich",
+        "hermes_time",
+        "utils",
+        "gateway",
+        "plugins"
+      ]
+    }
+  }
+}

@@ -1,0 +1,12 @@
+---
+name: krew-complete-probe
+version: 0.0.1
+description: >
+  Spike probe (a steward spike, 2026-09-16): logs the raw kwargs of the
+  kanban_task_completed hook to a file in $KREW_HOME/spikes/kanban-complete-hook/.
+  Throwaway — enabled on no profile; turn it on for a spike, off after.
+author: krew
+entry: __init__.py
+kind: standalone
+provides_hooks:
+  - kanban_task_completed

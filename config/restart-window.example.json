@@ -1,0 +1,178 @@
+{
+ "_doc": "The restart window's settings: copy to $KREW_HOME/restart-window.json. OFF until enabled is true. Every list is empty by default, so an enabled window with no tiers restarts nothing and says so in `facts`. tiers: unit -> tier (lower restarts first; the front door restarts last). crew_units / front_door_units / api_units / hermes_units: which units are the crew, the front door (crissa rules on the card), the API and Hermes. rulers: who may answer the card; owner_authors: whose card comments count as the owner's reboot reason; hands_words: extra words that mean 'needs hands'. busy: ear_health_url, ear_unit, hands_procs, speak_procs (a restart waits while any is busy; empty = not checked). api: health_detailed_url and key_env (the env var holding its key). occupancy: mode_file / pending_file (a GPU occupancy switch, if you run one). unit_ports, port_wait_s, health_path, wall_units, self_unit: the post-checks. post_reboot_checks: name -> health URL, checked four minutes after a reboot. nightly_unit: the restart waits while it runs. hermes_tree_script: the Hermes patch-stack check run before restarting hermes_units (unset = krew's own crew/scripts/hermes-tree.py; a path that does not exist = 'not checked'). hermes_patch_queue: the patches it checks (unset = krew's patches/); the Hermes tree is KREW_HERMES_TREE or HERMES_TREE, else ~/.hermes/hermes-agent. list_root: where the window's card lists live. `_reference_install` is the machine krew was built on, verbatim except the owner's own name (left out of rulers, owner_authors and hands_words), an agent name and two dev-box ports (placeholders in <>), its `house` name prefix written `ref` (ref-<name>.service); nothing reads it.",
+ "enabled": false,
+ "tiers": {},
+ "crew_units": [],
+ "front_door_units": [],
+ "api_units": [],
+ "hermes_units": [],
+ "rulers": [
+  "crissa",
+  "user",
+  "human",
+  "dashboard"
+ ],
+ "hands_words": [],
+ "owner_authors": [
+  "user",
+  "dashboard",
+  "human"
+ ],
+ "busy": {
+  "ear_health_url": "",
+  "ear_unit": "",
+  "hands_procs": [],
+  "speak_procs": []
+ },
+ "api": {
+  "health_detailed_url": "",
+  "key_env": "API_SERVER_KEY"
+ },
+ "occupancy": {
+  "mode_file": "",
+  "pending_file": ""
+ },
+ "unit_ports": {},
+ "port_wait_s": {},
+ "health_path": {},
+ "wall_units": [],
+ "self_unit": "",
+ "post_reboot_checks": {},
+ "nightly_unit": "krew-ms-nightly.service",
+ "hermes_tree_script": "",
+ "hermes_patch_queue": "",
+ "list_root": "",
+ "_reference_install": {
+  "enabled": true,
+  "tiers": {
+   "ref-stt.service": 2,
+   "audio8-asr.service": 2,
+   "ref-align.service": 2,
+   "ref-ear.service": 2,
+   "ref-presence.service": 2,
+   "ref-camera.service": 2,
+   "audio8-tts.service": 2,
+   "crew.service": 3,
+   "ref-voice.service": 3,
+   "ref-conductor.service": 4,
+   "ref-wall-ascii.service": 4,
+   "ref-display.service": 4,
+   "ref-voice-home.service": 4,
+   "ref-face.service": 4,
+   "hermes-crissa-gateway.service": 5,
+   "ops.service": 5,
+   "hermes-gateway.service": 5
+  },
+  "crew_units": [
+   "crew.service"
+  ],
+  "front_door_units": [
+   "ref-ear.service",
+   "hermes-gateway.service",
+   "hermes-crissa-gateway.service",
+   "ref-conductor.service",
+   "ops.service",
+   "ref-voice-home.service"
+  ],
+  "api_units": [
+   "hermes-gateway.service",
+   "hermes-crissa-gateway.service",
+   "ops.service"
+  ],
+  "hermes_units": [
+   "hermes-dashboard.service",
+   "hermes-gateway.service",
+   "hermes-crissa-gateway.service"
+  ],
+  "rulers": [
+   "dashboard",
+   "human",
+   "user",
+   "crissa"
+  ],
+  "owner_authors": [
+   "dashboard",
+   "human",
+   "user"
+  ],
+  "busy": {
+   "ear_health_url": "http://127.0.0.1:8194/health",
+   "ear_unit": "ref-ear.service",
+   "hands_procs": [
+    "crissa-hands.py"
+   ],
+   "speak_procs": [
+    "ref-speak",
+    "ref-speak.py"
+   ]
+  },
+  "api": {
+   "health_detailed_url": "http://127.0.0.1:<api port>/health/detailed",
+   "key_env": "API_SERVER_KEY"
+  },
+  "occupancy": {
+   "mode_file": "~/.hermes/ref-gpu-mode",
+   "pending_file": "~/.hermes/ref-gpu-pending"
+  },
+  "unit_ports": {
+   "ref-voice-home.service": 8099,
+   "ref-face.service": 8088,
+   "ref-conductor.service": 8100,
+   "ref-clip-doctor.service": 8199,
+   "ref-conductor-bench.service": 8110,
+   "ref-pose-map.service": 8213,
+   "ref-lila-takes.service": 8198,
+   "ref-lila-conductor.service": 8101,
+   "ref-lila-doctor.service": 8212,
+   "ref-camera.service": 8192,
+   "audio8-tts.service": 8024,
+   "ref-align.service": 8195,
+   "ref-presence.service": 8191,
+   "ref-shadow.service": 8093,
+   "ref-enroll.service": 8196,
+   "approvals-api.service": 8898,
+   "searxng.service": 8080,
+   "firecrawl.service": 3002,
+   "ref-memory.service": 8888,
+   "vllm-log.service": 8086,
+   "ref-stt.service": 8190,
+   "audio8-asr.service": 8096,
+   "ref-ear.service": 8194,
+   "hermes-crissa-gateway.service": "<crissa gateway port>",
+   "ref-voice.service": 7789,
+   "ops.service": 8000,
+   "crew.service": 8005,
+   "hermes-ada-gateway.service": 8653,
+   "hermes-steward-gateway.service": 8651,
+   "hermes-lila-gateway.service": 8654,
+   "hermes-dashboard.service": 9119
+  },
+  "port_wait_s": {
+   "ops": 420.0,
+   "crew": 420.0,
+   "ref-voice": 120.0,
+   "ref-memory": 90.0,
+   "firecrawl": 90.0,
+   "searxng": 60.0
+  },
+  "health_path": {
+   "ops": "/v1/models",
+   "crew": "/v1/models"
+  },
+  "wall_units": [
+   "ref-conductor",
+   "ref-wall-ascii",
+   "ref-display"
+  ],
+  "self_unit": "ref-voice-home",
+  "post_reboot_checks": {
+   "ear (through the Crissa player)": "http://127.0.0.1:8100/v1/ear?part=stt",
+   "panel :8099": "http://127.0.0.1:8099/health",
+   "memory :8888": "http://127.0.0.1:8888/health",
+   "Crissa gateway": "http://127.0.0.1:<crissa gateway port>/health"
+  },
+  "nightly_unit": "nightly-tests.service",
+  "hermes_tree_script": "scripts/hermes-tree.py (krew ships it as crew/scripts/hermes-tree.py: the default)",
+  "list_root": "~/agents/<agent>/state/approvals"
+ }
+}

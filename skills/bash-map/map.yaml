@@ -1,0 +1,30 @@
+# bash-map: coder 1's index. Hot schemas stay (terminal, file, team). Retool = edit this file.
+name: bash-map
+who: bash
+description: One lookup, then the skill to load and act on the host. Not a hands child.
+act_column: act
+rules:
+  title: checkouts and tests
+  lines:
+    - '- **Comparison checkouts go under the card''s workspace on disk, never /tmp** (tmpfs is RAM, against the worker''s memory cap): `git worktree add $HERMES_KANBAN_WORKSPACE/baseline <ref>`, and `git worktree remove` it before the card ends.'
+    - '- **Name the test files your change touches**: never a whole `tests/` run, never a tests/ glob.'
+rows:
+  - ask: "implement · diff · land the card"
+    do: "terminal + file; complete with a path under the deliverables folder"
+  - ask: "render · still · clip · Comfy"
+    skill: krew-render
+  - ask: "third try · same failure · frame"
+    skill: krew-reframe
+  - ask: "adversarial · non-trivial refactor"
+    skill: adversarial-gate
+  - ask: "ops tok/s"
+    skill: ops-toks
+  - ask: "crystal · deliverable · complete the card"
+    skill: krew-deliverable
+where:
+  - "Finished work: the deliverables folder your SOUL names (`KREW_DELIVERABLES`)"
+  - "Crew scripts: `~/.krew/crew/`"
+  - "Board: the kanban board Ada runs (`team_board`)"
+rule: >
+  One lookup, then act. Terminal and file stay on the belt. You are the
+  hands: do not spawn a nested hermes CLI of yourself.

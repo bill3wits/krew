@@ -1,0 +1,53 @@
+{
+  "_about": "Crissa's kit (2026-10-09, the parity build): what the reference install's front door runs that krew did not ship: her Decide watch (the needs-crissa-watch cron's monitor script, prompt pinned from it), the spoken tool callout hook, her computer-use ceiling, the Oracle tools (krew-oracle), the Crissa voice tiers as a streaming TTS provider (krew-tts), the Hindsight plugin pin, and the STT command for a voice note (krew-stt-cli.py, written for krew: the reference named a script that no longer existed). docs/CRISSA-KIT.md rides the docs-contracts package (docs/*.md).",
+  "packages": {
+    "crissa-kit": {
+      "kind": "crew",
+      "about": "crew/scripts/crissa-needs-watch.py (her Decide watch's monitor: presence through the Wall's player + the open escalation cards; CRON_PROMPT + install_cron_prompt), crew/scripts/crissa-tool-callout.py (one spoken line per tool start, through the player's /v1/announce), crew/scripts/krew-stt-cli.py (a voice note through the Crissa ASR), crew/config/crissa-cua-manifest.yaml (her hands' ceiling, copied by init), crew/hindsight/plugin-pin.json.",
+      "files": [
+        "crew/scripts/crissa-needs-watch.py",
+        "crew/scripts/crissa-tool-callout.py",
+        "crew/scripts/krew-stt-cli.py",
+        "crew/config/crissa-cua-manifest.yaml",
+        "crew/hindsight/plugin-pin.json"
+      ],
+      "optional_imports": [
+        "yaml",
+        "ruamel",
+        "krew_hermes"
+      ]
+    },
+    "krew-oracle": {
+      "kind": "plugin",
+      "about": "oracle_presence, oracle_inspect, oracle_visit, oracle_chase_auth, oracle_embed, oracle_look_at, oracle_name_face, error-check on toolset team: the Oracle visit loop's tools, HTTP to the Wall's player (presence) and the presence service's own address (camera verbs, when configured).",
+      "files": [
+        "plugins/krew-oracle/__init__.py",
+        "plugins/krew-oracle/plugin.yaml",
+        "plugins/krew-oracle/krew_settings.py"
+      ],
+      "optional_imports": [
+        "ruamel",
+        "yaml"
+      ]
+    },
+    "krew-tts": {
+      "kind": "plugin",
+      "about": "The Crissa voice tiers (turbo, audio8, pocket, kokoro; the first that answers) as the `crissa` streaming TTS provider; local-first priority; a loud note when streaming falls back.",
+      "files": [
+        "plugins/krew-tts/__init__.py",
+        "plugins/krew-tts/plugin.yaml",
+        "plugins/krew-tts/VOICES.md",
+        "plugins/krew-tts/krew_settings.py"
+      ],
+      "optional_imports": [
+        "ruamel",
+        "yaml"
+      ]
+    }
+  },
+  "imports": {
+    "test_only": [
+      "krew_hooks"
+    ]
+  }
+}

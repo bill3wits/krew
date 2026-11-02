@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+# sweep-ram-guard — working-set (anon) pressure gate for the hourly board sweep.
+#
+# WHY (the 2026-09-21 17:45Z OOM_Scheduling kill, t_5b190d15, and its 09-22
+# correction). The sweep's worker runs inside the hermes-ada-gateway kanban
+# swarm. That unit cgroup was capped at MemoryHigh=20G, and the 09-21 kill
+# happened oomd-side on the cgroup's memory.current — which COUNTS RECLAIMABLE
+# PAGE CACHE. Measured in that cgroup the night of 09-21: anon 658 MB vs file
+# 12.9 GB. The kernel reclaimed continuously to stay under the cap, and
+# ManagedOOMMemoryPressure=kill on <email> fired on the resulting
+# pressure (54.56 % > 50 %). The ceiling was not holding a leak; it was
+# manufacturing pressure from cache. MemoryHigh was therefore REMOVED from the
+# memcap drop-in (commit 6559bb01, 09-22); the surviving hard ceiling is
+# MemoryMax=24G, which the kernel enforces in-process (cgroup OOM) on working
+# set, not on cache.
+#
+# Gate: the unit's anon (memory.stat 'anon' — the working set) vs its
+# memory.max (24G, numeric). That is the same metric the kernel's per-cgroup
+# OOM counts, minus the reclaimable file cache the 09-21 kill proved is
+# noise.
+#
+# THRESHOLD BOUNDARY MOVED ON 09-22: the 80 % default is unchanged, but the
+# ceiling it applies to moved from 20G (MemoryHigh, soft) to 24G (MemoryMax,
+# hard) — 16.0 GB -> 19.2 GB. The hard ceiling is 2G above the old soft one
+# on purpose: a per-cgroup OOM at 24G is the recovery, not the pathology —
+# the pathology was a 69.3G balloon (09-05 RCA). 19.2 GB of anon in a swarm
+# whose idle working set was ~13 GB of anon is approaching-ceiling for real.
+#
+# Fail-open contract: ANY probe failure (unit dir not found, memory.stat
+# unreadable or missing the anon line, memory.max non-numeric/'max',
+# arithmetic error) -> exit 0 with a "failing open" note. A broken gate must
+# never starve the board of its hourly steward (the 09-13 sweep_gate failure).
+#
+# rc contract (the sweep maps these):
+#   0  pass, or fail-open (pressure below threshold / gate unmeasurable)
+#   2  arg error (--max-pct bad/missing value; the sweep fails open on this)
+#   3  pressure skip (anon at/above threshold; the sweep logs + exits 0,
+#       no marker stamped, the Persistent timer refires next hour)
+#
+# Usage:
+#   sweep-ram-guard                      # default: 80 % of memory.max
+#   sweep-ram-guard --max-pct=70         # explicit threshold
+#   sweep-ram-guard --disable            # unconditionally pass (rc 0)
+#
+# Env: SWEEP_RAM_MAX_PCT (threshold), SWEEP_RAM_PROBE_DIR (probe seam: the
+# guard locates the unit dir by NAME under this root instead of
+# /sys/fs/cgroup), SWEEP_RAM_GUARD=0 (disable, handled by the sweep).
+#
+# NEVER VRAM: the workers are Python/CLI; a VRAM floor is unreachable in
+# Standard mode (test_sweep_has_no_gpu_gate / test_sweep_guard_still_no_vram).
+set -u
+
+MAX_PCT=${SWEEP_RAM_MAX_PCT:-80}
+# Probe seam: the env form (SWEEP_RAM_PROBE_DIR) is what the sweep forwards
+# on its invocation line; the --probe-dir flag is the manual/test form.
+PROBE_DIR="${SWEEP_RAM_PROBE_DIR:-}"
+DISABLED=0
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --max-pct=*) MAX_PCT="${1#--max-pct=}" ;;
+        --max-pct)
+            shift
+            if [ $# -eq 0 ]; then
+                echo "sweep-ram-guard: --max-pct is missing its value" >&2
+                exit 2
+            fi
+            MAX_PCT="$1"
+            ;;
+        --probe-dir)
+            shift
+            [ $# -eq 0 ] && { echo "sweep-ram-guard: --probe-dir is missing its value" >&2; exit 2; }
+            PROBE_DIR="$1"
+            ;;
+        --disable) DISABLED=1 ;;
+        *) echo "sweep-ram-guard: unknown argument: $1" >&2; exit 2 ;;
+    esac
+    shift
+done
+
+case "$MAX_PCT" in
+    ''|*[!0-9]*)
+        echo "sweep-ram-guard: --max-pct must be a number, got '$MAX_PCT'" >&2
+        exit 2
+        ;;
+esac
+if [ "$MAX_PCT" -gt 100 ]; then
+    echo "sweep-ram-guard: --max-pct must be <= 100, got $MAX_PCT" >&2
+    exit 2
+fi
+
+if [ "$DISABLED" = 1 ]; then
+    echo "sweep-ram-guard: disabled (--disable) — passing"
+    exit 0
+fi
+
+# Fail-open helper: log + exit 0.
+fail_open() {
+    echo "sweep-ram-guard: $1 — failing open" >&2
+    exit 0
+}
+
+# Locate the unit cgroup dir by name under the probe root (tests point this
+# at a synthetic tree; live it walks /sys/fs/cgroup). The unit is user-scoped
+# (user.slice/...), NOT under system.slice — never hardcode the path.
+ROOT="${PROBE_DIR:-/sys/fs/cgroup}"
+# The dispatcher's unit: Ada's gateway while each profile has one of its own, the ONE host
+# gateway (hermes-gateway.service) once it serves every profile. Ada's is looked for first, so
+# nothing changes until her unit is gone.
+UNIT_DIR=""
+for GW_UNIT in ${SWEEP_RAM_UNIT:-hermes-ada-gateway.service hermes-gateway.service}; do
+    UNIT_DIR=$(find "$ROOT" -maxdepth 6 -type d -name "$GW_UNIT" 2>/dev/null | head -n 1)
+    [ -n "$UNIT_DIR" ] && break
+done
+[ -n "$UNIT_DIR" ] || fail_open "${SWEEP_RAM_UNIT:-hermes-ada-gateway.service / hermes-gateway.service} cgroup dir not found under $ROOT"
+
+# anon from memory.stat — the working set. The kernel writes 'anon',
+# 'inactive_anon', 'active_anon' as distinct keys; match the exact key.
+# memory.stat must exist AND the awk must return a number.
+[ -r "$UNIT_DIR/memory.stat" ] || fail_open "memory.stat unreadable in $UNIT_DIR"
+ANON=$(awk '$1=="anon"{print $2; exit}' "$UNIT_DIR/memory.stat")
+case "$ANON" in
+    ''|*[!0-9]*) fail_open "anon not a number in memory.stat (got '${ANON:-}')" ;;
+esac
+
+# The hard ceiling. 'max' (no cap configured) or garbage -> fail open: an
+# uncapped unit has no ceiling to guard against.
+[ -r "$UNIT_DIR/memory.max" ] || fail_open "memory.max unreadable in $UNIT_DIR"
+MAX=$(awk 'NR==1{print; exit}' "$UNIT_DIR/memory.max")
+case "$MAX" in
+    ''|*[!0-9]*) fail_open "memory.max is not numeric ('${MAX:-}')" ;;
+esac
+[ "$MAX" -gt 0 ] || fail_open "memory.max is zero"
+
+# Percent = anon/max * 100, integer. The decision uses THIS value for both
+# the gate and the display line, so the number in the log and the number
+# that fired the decision can never disagree. (The old 09-22 draft
+# cross-multiplied anon*100 >= max*pct for the decision while displaying the
+# floored percent — at a byte boundary just under the true threshold the
+# display read 79% while the gate still fired. One number, one decision.)
+PCT=$(( ANON * 100 / MAX ))
+PCT_GB=$(( (ANON / 1024 / 1024 / 1024) ))
+MAX_GB=$(( (MAX / 1024 / 1024 / 1024) ))
+
+# The measured line (every invocation, stderr; the sweep captures the last
+# line of guard stderr into its skip message).
+echo "sweep-ram-guard: measured anon=$ANON B ($PCT_GB GiB) of memory.max=$MAX B ($MAX_GB GiB) ($PCT%); threshold $MAX_PCT%" >&2
+
+if [ "$PCT" -ge "$MAX_PCT" ]; then
+    echo "sweep-ram-guard: anon at/above $MAX_PCT% of $GW_UNIT memory.max ($PCT_GB GiB anon / $MAX_GB GiB max; $PCT%) -> SKIP" >&2
+    exit 3
+fi
+exit 0

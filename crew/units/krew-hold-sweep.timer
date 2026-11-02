@@ -1,0 +1,10 @@
+[Unit]
+Description=krew board gate every 2 min
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=2min
+AccuracySec=20s
+
+[Install]
+WantedBy=timers.target

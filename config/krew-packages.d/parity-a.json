@@ -1,0 +1,31 @@
+{
+  "_about": "Parity lane A (the crew loop, 2026-10-10): the house's two board scripts krew did not carry yet, copied from the reference install (kanban-chatter.py, the per-event roll writer the atomic one replaced and still the house's own file; krew-board-roll-ready.py, the drained-board gate a board roll asks first) and the board roll's opt-in, timerless unit; the hold sweep's mode step (krew-mode-hold-sweep). imports.test_only: the ported board tests import the crew/lib modules they cover (each test puts crew/lib on sys.path), the lane-B precedent for janitor/.",
+  "packages": {
+    "crew-loop-parity": {
+      "kind": "crew",
+      "about": "kanban-chatter.py (board events -> the Wall's log roll, one pass; the timer runs kanban-chatter-atomic.py), krew-board-roll-ready.py (exit 0 = the board may roll, 1 = it waits: every open card counts, parks included) and krew-board-roll.service (no timer, opt-in; ExecCondition asks the gate, the roll command is the install's own). krew-mode-hold-sweep is the hold sweep unit's second step, as on the reference install: krew-mode's `hold-sweep` through the one mode command (crew/lib/krew_mode_cmd.py: KREW_MODE_BIN, KREW_MODE_PATH, the install's link, else the krew-mode beside it); a failed sweep fails the unit (KREW_MODE_SWEEP_STRICT=0 reports it).",
+      "files": [
+        "crew/scripts/kanban-chatter.py",
+        "crew/scripts/krew-board-roll-ready.py",
+        "crew/units/krew-board-roll.service",
+        "crew/scripts/krew-mode-hold-sweep"
+      ],
+      "optional_imports": [
+        "krew_hermes"
+      ]
+    }
+  },
+  "imports": {
+    "test_only": [
+      "board_parallel",
+      "close_clean",
+      "cron_streak",
+      "kanban_cause",
+      "kanban_kpis",
+      "kanban_liveness",
+      "kanban_orphans",
+      "kanban_show_slim",
+      "krew_daily"
+    ]
+  }
+}

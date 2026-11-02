@@ -1,0 +1,7 @@
+[Unit]
+Description=krew-window-tick: start the jobs in {krew_home}/window-schedule.json when off_hours (krew.yaml) open
+
+[Service]
+Type=oneshot
+Environment=KREW_HOME={krew_home}
+ExecStart={python} {krew}/window/scripts/krew-window-tick.py

@@ -1,0 +1,4 @@
+#!/bin/sh
+# Refuse a push that carries a private word, a private path or a key (.githooks/pre_push.py).
+# Enable once per clone:  git config core.hooksPath .githooks
+exec python3 "$(git rev-parse --show-toplevel)/.githooks/pre_push.py"

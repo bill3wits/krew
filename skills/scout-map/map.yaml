@@ -1,0 +1,14 @@
+name: scout-map
+who: scout
+description: One lookup — notes and search. Never a kanban assignee.
+act_column: act
+rows:
+  - ask: "search · what is the latest · SOTA"
+    do: "web_search / search, then a note under krew-deliverables/scratch"
+  - ask: "one-off look-up from Crissa"
+    do: "same: search, write the stub, stop. No terminal, no kanban."
+where:
+  - "Notes: `~/Desktop/krew-deliverables/scratch/`"
+  - "Repo: `~/.krew/crew/`"
+rule: >
+  One lookup, then notes. No terminal, no kanban, never a dispatch assignee.

@@ -1,0 +1,15 @@
+{
+  "_about": "krew's two builder skills (the owner 2026-11-01: \"how about one skillbuilder skill and tool builder skill\"): a profile turns a repeated job into its own skill, or builds a new tool through tests, Vera, T0 and the owner's yes. Both log every step under $KREW_HOME and land a page in $KREW_HOME/built, the docs index's `built` source.",
+  "packages": {
+    "skills-builders": {
+      "kind": "skills",
+      "about": "krew-skill-builder (skills/krew-skill-builder/scripts/skill_lab.py: new, check, trial, record, list) and krew-tool-builder (skills/krew-tool-builder/scripts/tool_lab.py: new, test, submit, t0, ask-owner, status, install, remove). No switch arms either; KREW_SKILL_LAB=0 / KREW_TOOL_LAB=0 refuse every verb.",
+      "files": [
+        "skills/krew-skill-builder/SKILL.md",
+        "skills/krew-skill-builder/scripts/skill_lab.py",
+        "skills/krew-tool-builder/SKILL.md",
+        "skills/krew-tool-builder/scripts/tool_lab.py"
+      ]
+    }
+  }
+}

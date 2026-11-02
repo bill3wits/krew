@@ -1,0 +1,6 @@
+froggeric/Qwen-Fixed-Chat-Templates v22.1
+https://huggingface.co/froggeric/Qwen-Fixed-Chat-Templates
+Apache-2.0 (inherited from Qwen)
+
+The chat template the reference box passes to vLLM for Qwen3.8-27B (start-engine.sh --chat-template).
+The weights also carry their own chat_template.jinja; this one fixes tool calls and thinking for Hermes.

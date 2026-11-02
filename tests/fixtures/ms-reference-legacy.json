@@ -1,0 +1,348 @@
+{
+ "CANARY_05B": {
+  "free_mib_min": 4096,
+  "kv_bytes": "67108864",
+  "max_len": "256",
+  "max_seqs": "1",
+  "model": "{data}/hf/hub/models--Qwen--Qwen2.5-0.5B-Instruct/snapshots/7ae557604adf67be50417f59c2c2f167def9a775",
+  "name": "canary",
+  "port": 8001,
+  "util": "0.07"
+ },
+ "CANARY_ENV": "vllm-0271-cu132",
+ "COMFY_RECIPES": "${KREW_HOME}/recipes.json",
+ "COMFY_ROOT": "{data}/comfy",
+ "COMFY_STATS_URL": "http://127.0.0.1:8188/system_stats",
+ "CONFIG_SUPPORT_FLOOR": 12,
+ "CREW_VLLM": [
+  "http://127.0.0.1:8005/v1",
+  "crew"
+ ],
+ "DELIVERABLES_DIR": "{deliverables}",
+ "ENVS_ROOT": "${MS_ENVS_ROOT}",
+ "GPU_SHARED_ENVS": [
+  "comfyui",
+  "cosyvoice_vllm",
+  "unsloth",
+  "unsloth-train",
+  "vllm",
+  "vllm-0271-cu132"
+ ],
+ "HERMES_CREW": [
+  "ada",
+  "bash",
+  "lila",
+  "scout",
+  "steward",
+  "vera",
+  "crissa"
+ ],
+ "HERMES_LIVE_PROFILES": "~/.hermes/profiles",
+ "HERMES_PACKS": "{krew_repo}/souls",
+ "HINDSIGHT_ENV": "{data}/hindsight/hindsight.env",
+ "HINDSIGHT_RETAIN_TOKENS_MAX_SANE": 8192,
+ "KANBAN_WORKERS": [
+  "ada",
+  "bash",
+  "steward",
+  "lila",
+  "vera",
+  "crissa"
+ ],
+ "KNOWN_ROLES": {
+  "audio8-tts": [
+   "Audio8 PA announcer :8024",
+   false
+  ],
+  "comfyui": [
+   "ComfyUI :8188 \u2014 Render occupancy; flux/LTX recipes under {data}/comfy/workflows",
+   true
+  ],
+  "cosmos-edge": [
+   "cosmos bench",
+   true
+  ],
+  "cosyvoice": [
+   "legacy Cosy native/ORT (not live mouth)",
+   false
+  ],
+  "cosyvoice_vllm": [
+   "product Cosy free-air :7789 (vLLM 0.26)",
+   true
+  ],
+  "hindsight": [
+   "memory",
+   false
+  ],
+  "parakeet": [
+   "RETIRED NeMo parakeet \u2014 units deleted 2026-09-05",
+   false
+  ],
+  "parakeet-onnx": [
+   "RETIRED onnx side-car \u2014 env deleted 2026-09-05",
+   false
+  ],
+  "rail-stt": [
+   "ear STT client (read through the Crissa player's /v1/ear)",
+   false
+  ],
+  "unsloth": [
+   "unsloth base",
+   true
+  ],
+  "unsloth-train": [
+   "door/seat LoRA train",
+   true
+  ],
+  "vllm": [
+   "rail-presence + rail-camera (vLLM 0.27.1 cu130, not Qwen serve)",
+   true
+  ],
+  "vllm-0271-cu132": [
+   "live Qwen vLLM 0.27.1 cu132 \u2014 ops :8000 / Beast crew :8005",
+   true
+  ],
+  "wespeaker": [
+   "WeSpeaker voice emb",
+   false
+  ]
+ },
+ "LIVE_MANIFEST": "{crissa_repo}/docs/MANIFEST-SYSTEM-LIVE.md",
+ "MODE_FILE": "~/.hermes/ref-gpu-mode",
+ "MS_ENV_HOLD_FILE": "~/.hermes/ms-env-hold.json",
+ "MS_KANBAN_PROFILE": "ada",
+ "MS_MITIGATION_MAX_ENVS": 0,
+ "MS_TTL_ANCHOR": "2026-09-01",
+ "OPS_VLLM": [
+  "http://127.0.0.1:8000/v1",
+  "ops"
+ ],
+ "OPTIONAL_HEALTH": [
+  "stamp_ui"
+ ],
+ "OUT_ROOT": "${KREW_HOME}/ms",
+ "RETIRED_ENVS": [
+  "cosmos-edge",
+  "cosyvoice_vllm.broken-0.9.20260812112155",
+  "parakeet",
+  "parakeet-onnx",
+  "qwen-tts",
+  "qwen3-tts-onnx",
+  "vllm-0.28",
+  "vllm-0.28.0",
+  "vllm-nvfp4-sm120",
+  "vllm-nvfp4-sm120-027",
+  "vllm-rail"
+ ],
+ "SERVICE_ENVS_ALL": {
+  "audio8-tts": [
+   {
+    "health": "http://127.0.0.1:8024/api/health",
+    "health_wait_s": 120,
+    "restart": "restart",
+    "scope": "user",
+    "unit": "audio8-tts.service"
+   }
+  ],
+  "cosyvoice": [
+   {
+    "health": "http://127.0.0.1:8100/v1/ear?part=asr",
+    "health_wait_s": 180,
+    "restart": "report",
+    "scope": "user",
+    "unit": "audio8-asr.service"
+   }
+  ],
+  "cosyvoice_vllm": [
+   {
+    "health": "http://127.0.0.1:7789/health",
+    "occupancy_parked_in": [
+     "beast",
+     "off"
+    ],
+    "restart": "report",
+    "scope": "user",
+    "unit": "cosy-voice.service"
+   }
+  ],
+  "hindsight": [
+   {
+    "health": "http://127.0.0.1:8888/health",
+    "health_wait_s": 120,
+    "restart": "restart",
+    "scope": "system",
+    "unit": "hindsight.service"
+   }
+  ],
+  "rail-stt": [
+   {
+    "health": "http://127.0.0.1:8100/v1/ear?part=stt",
+    "health_wait_s": 90,
+    "restart": "report",
+    "scope": "user",
+    "unit": "rail-stt.service"
+   },
+   {
+    "health": "http://127.0.0.1:8100/v1/rail/align/health",
+    "health_wait_s": 90,
+    "restart": "report",
+    "scope": "user",
+    "unit": "rail-align.service"
+   },
+   {
+    "health": "http://127.0.0.1:8093/health",
+    "health_wait_s": 90,
+    "restart": "restart",
+    "scope": "user",
+    "unit": "ws-shadow.service"
+   },
+   {
+    "health": "http://127.0.0.1:8100/v1/rail/enroll/health",
+    "health_wait_s": 60,
+    "restart": "restart",
+    "scope": "user",
+    "unit": "enroll-panel.service"
+   }
+  ],
+  "vllm": [
+   {
+    "health": "http://127.0.0.1:8100/v1/rail/presence/health",
+    "health_wait_s": 180,
+    "restart": "report",
+    "scope": "user",
+    "unit": "rail-presence.service"
+   },
+   {
+    "health": "http://127.0.0.1:8100/v1/rail/camera/health",
+    "health_wait_s": 120,
+    "restart": "report",
+    "scope": "user",
+    "unit": "rail-camera.service"
+   },
+   {
+    "health": "http://127.0.0.1:8100/v1/health",
+    "restart": "report",
+    "scope": "user",
+    "unit": "ref-conductor.service"
+   },
+   {
+    "health": "http://127.0.0.1:8110/v1/health",
+    "restart": "report",
+    "scope": "user",
+    "unit": "ref-conductor-bench.service"
+   },
+   {
+    "health": "http://127.0.0.1:8101/v1/health",
+    "restart": "report",
+    "scope": "user",
+    "unit": "ref-lila-conductor.service"
+   }
+  ],
+  "vllm-0271-cu132": [
+   {
+    "health": "http://127.0.0.1:8005/v1/models",
+    "occupancy_parked_in": [
+     "off"
+    ],
+    "restart": "report",
+    "scope": "user",
+    "unit": "crew.service"
+   }
+  ]
+ },
+ "SMOKE_IMPORT": {
+  "audio8-tts": {
+   "code": "import numpy, scipy.signal, onnxruntime; from tokenizers import Tokenizer; from fastapi import FastAPI; from pydantic import BaseModel; import arktts_runtime.runtime; print('audio8 OK', onnxruntime.__version__, numpy.__version__)",
+   "env": {
+    "PYTHONPATH": "{data}/services/audio8-tts/onnx_runtime"
+   },
+   "timeout": 180
+  },
+  "comfyui": {
+   "code": "import folder_paths; print('comfy', getattr(folder_paths, 'base_path', 'ok'))",
+   "env": {
+    "PYTHONPATH": "{data}/comfy"
+   },
+   "timeout": 60
+  },
+  "cosyvoice": {
+   "code": "import cosyvoice.cli.frontend, transformers, modelscope; import onnxruntime as ort; m='{data}/hf/Fun-CosyVoice3-0.5B-2512'; s1=ort.InferenceSession(m+'/speech_tokenizer_v3.onnx', providers=['CPUExecutionProvider']); s2=ort.InferenceSession(m+'/campplus.onnx', providers=['CPUExecutionProvider']); print('ORT OK:', len(s1.get_inputs()), len(s2.get_inputs()))",
+   "env": {
+    "PYTHONPATH": "{data}/cosyvoice/CosyVoice:{data}/cosyvoice/CosyVoice/third_party/Matcha-TTS"
+   },
+   "timeout": 300
+  },
+  "cosyvoice_vllm": {
+   "code": "import fastapi, pydantic; print('cosy-api', fastapi.__version__, pydantic.__version__)",
+   "timeout": 30
+  },
+  "hindsight": {
+   "code": "import hindsight_api.main; import fastmcp.server; from hindsight_api.api import create_app; print('hindsight-api OK')",
+   "timeout": 180
+  },
+  "mediapipe": {
+   "code": "import os, numpy as np, cv2, mediapipe as mp; from mediapipe.tasks.python import BaseOptions; from mediapipe.tasks.python.vision import FaceLandmarker, FaceLandmarkerOptions, RunningMode; m = os.environ.get('REF_FACE_MP_MODEL', '${MS_ENVS_ROOT}/mediapipe-models/face_landmarker.task'); lm = FaceLandmarker.create_from_options(FaceLandmarkerOptions(base_options=BaseOptions(model_asset_path=m), running_mode=RunningMode.IMAGE, num_faces=1)); r = lm.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=np.zeros((96, 96, 3), np.uint8))); print('mediapipe OK', mp.__version__, cv2.__version__, 'faces', len(r.face_landmarks))",
+   "timeout": 120
+  },
+  "mfa": {
+   "code": "import sys; sys.path.insert(0, '{crissa_repo}/lib'); import align_mfa; e = align_mfa.Engine(); e.start(); print('mfa OK warm %.1fs' % e.load_s); e.proc.terminate(); e.proc.join(10)",
+   "timeout": 300
+  },
+  "parakeet": {
+   "code": "import nemo.collections.asr",
+   "timeout": 240
+  },
+  "parakeet-onnx": {
+   "code": "import sherpa_onnx; import onnxruntime",
+   "timeout": 120
+  },
+  "rail-stt": {
+   "code": "import rail_stt; from hyperpyyaml import load_hyperpyyaml",
+   "env": {
+    "PYTHONPATH": "~/projects/rail-stt"
+   },
+   "timeout": 240
+  },
+  "unsloth": {
+   "code": "import importlib.metadata as m; print('unsloth', m.version('unsloth'))",
+   "timeout": 30
+  },
+  "unsloth-train": {
+   "code": "import importlib.metadata as m; print('unsloth-train', m.version('torch'))",
+   "timeout": 30
+  },
+  "vllm": {
+   "code": "import rail_presence; import rail_presence.grabber; print('presence-rails')",
+   "env": {
+    "PYTHONPATH": "~/projects/rail-presence/src"
+   },
+   "timeout": 240
+  },
+  "vllm-0271-cu132": {
+   "code": "import fastapi, pydantic; print('qwen-ops-api', fastapi.__version__, pydantic.__version__)",
+   "timeout": 30
+  },
+  "wespeaker": {
+   "code": "import wespeakerruntime; print('wespeaker', getattr(wespeakerruntime, '__version__', 'ok'))",
+   "timeout": 60
+  }
+ },
+ "TRAIN_BUSY": "/run/hermes/train-busy",
+ "UPSTREAM_APIS_FILE": "~/.hermes/ref-ms-upstream-apis",
+ "VENVS": [
+  "audio8-tts",
+  "comfyui",
+  "cosyvoice",
+  "cosyvoice_vllm",
+  "hindsight",
+  "mediapipe",
+  "mfa",
+  "rail-stt",
+  "unsloth",
+  "unsloth-train",
+  "vllm",
+  "vllm-0271-cu132",
+  "wespeaker"
+ ],
+ "NOTIFY_SCRIPT": "{crissa_repo}/scripts/crissa-page.py"
+}

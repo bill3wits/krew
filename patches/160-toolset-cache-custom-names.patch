@@ -1,0 +1,26 @@
+# why: The plugin-toolset cache was persisted before plugin discovery finished; a toolset built with create_custom_toolset over a built-in tool (krew-hands' skill_read) carries no plugin-registered tool, so the CLI's unknown-toolset check raced discovery and reported it as a typo. The persist step also sweeps static TOOLSETS keys absent from get_plugin_toolsets().
+# tests: tests/hermes_cli/test_plugin_toolset_cache_custom_names.py::test_custom_toolset_name_reaches_cache
+# upstream: candidate
+# base: hermes-agent 35272ce28b29 (v0.21.4+canary.20260928T071354Z-19-g35272ce28b)
+
+diff --git a/hermes_cli/plugins.py b/hermes_cli/plugins.py
+index bba82a3b4b..cdda576990 100644
+--- a/hermes_cli/plugins.py
++++ b/hermes_cli/plugins.py
+@@ -1780,6 +1780,16 @@ def _persist_plugin_toolset_keys() -> None:
+     try:
+         from utils import atomic_json_write
+         keys = sorted({ts_key for ts_key, _, _ in get_plugin_toolsets()})
++        try:
++            import toolsets as _toolsets_mod
++            # Krew: a create_custom_toolset entry (krew-hands' skill_read) is a
++            # static TOOLSETS key carrying no plugin-registered tool, so get_plugin_toolsets()
++            # is blind to it; without this sweep the CLI's unknown-toolset check races the
++            # discovery thread and warns on it. Static keys only - the global registry is
++            # profile-scoped and would persist toolsets this profile was never granted.
++            keys = sorted(set(keys) | (set(_toolsets_mod.TOOLSETS) - set(keys)))
++        except Exception:
++            logger.debug("custom toolset name persist failed", exc_info=True)
+         try:
+             portable = sorted(get_plugin_manager().get_portable_mcp_servers())
+         except Exception:

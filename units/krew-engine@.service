@@ -1,0 +1,22 @@
+# One brain: systemctl --user enable --now krew-engine@ops  (and krew-engine@crew). Rendered by krew-install.py --units
+# with {krew} replaced by the checkout. Memory caps as the reference box runs them: a runaway dies in its cgroup.
+[Unit]
+Description=krew engine %i (vLLM, served name %i)
+After=network.target
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart={krew}/engines/start-engine.sh %i
+Restart=on-failure
+RestartSec=15
+TimeoutStartSec=600
+TimeoutStopSec=45
+KillMode=mixed
+FinalKillSignal=SIGKILL
+MemoryMax=40G
+MemorySwapMax=2G
+
+[Install]
+WantedBy=default.target

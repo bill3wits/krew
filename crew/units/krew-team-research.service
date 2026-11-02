@@ -1,0 +1,14 @@
+# krew: Scout's team research note: the head of the nightly improvement chain (research -> team eval -> improve-file -> outcomes).
+# No timer of its own: the window ticker (krew's off-hours scheduler) starts it as a window job and writes the
+# day it serves to krew-day.env. Run it by hand any time.
+[Unit]
+Description=krew Scout team research (head of the improvement chain)
+
+[Service]
+Type=oneshot
+EnvironmentFile=-%h/.krew/krew-day.env
+TimeoutStartSec=45min
+Environment=HERMES_WRITE_SAFE_ROOT=%h/Desktop/krew-deliverables:%h/.krew/memory/ms:%h/.krew/docs
+Environment=TEAM_SOURCES_V2=1
+Environment=KREW_T0_MODE=enforce
+ExecStart=/usr/bin/python3 %h/.krew/crew/scripts/krew-crew-run steward-architect-run.sh research
